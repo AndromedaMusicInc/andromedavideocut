@@ -10,7 +10,7 @@ import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
 import { ASPECTS, type AspectId, type Asset } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
-import { Download, LoaderCircle } from "lucide-react";
+import { Download, LoaderCircle, Maximize, Minimize } from "lucide-react";
 import { ingestFile } from "@/lib/editor/import-media";
 import { useEffect, useRef, useState } from "react";
 
@@ -263,6 +263,7 @@ export function Editor() {
             </option>
           ))}
         </select>
+        <FullscreenButton />
         <button
           type="button"
           onClick={() => {
@@ -468,5 +469,57 @@ export function Editor() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void };
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+
+function fsActive() {
+  const d = document as FsDoc;
+  return Boolean(d.fullscreenElement ?? d.webkitFullscreenElement);
+}
+
+/** Pantalla completa propia (Fullscreen API) con alternar y respaldo si el iframe no lo permite. */
+function FullscreenButton() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const sync = () => setOn(fsActive());
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("webkitfullscreenchange", sync);
+    };
+  }, []);
+  async function toggle() {
+    const d = document as FsDoc;
+    const el = document.documentElement as FsEl;
+    try {
+      if (fsActive()) {
+        await (d.exitFullscreen ? d.exitFullscreen() : d.webkitExitFullscreen?.());
+        return;
+      }
+      const enabled = d.fullscreenEnabled ?? Boolean(el.webkitRequestFullscreen);
+      if (!enabled) throw new Error("bloqueado");
+      await (el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen?.());
+    } catch {
+      useEditor
+        .getState()
+        .tell("Este navegador o la página que lo incrusta no permite pantalla completa. Abro el editor en una pestaña nueva.");
+      window.open(window.location.href, "_blank", "noopener");
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void toggle()}
+      aria-label={on ? "Salir de pantalla completa" : "Pantalla completa"}
+      title={on ? "Salir de pantalla completa" : "Pantalla completa"}
+      data-fullscreen-toggle=""
+      className="grid size-11 shrink-0 place-items-center rounded-md border border-line bg-raised text-fg hover:bg-surface"
+    >
+      {on ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
+    </button>
   );
 }

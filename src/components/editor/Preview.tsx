@@ -43,11 +43,13 @@ export function Preview() {
   const [zona, setZona] = useState(false);
   const [fault, setFault] = useState<string | null>(null);
   const [coach, setCoach] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
   const faultRef = useRef<string | null>(null);
 
   useEffect(() => {
     try {
       setCoach(window.localStorage.getItem("avc-coach") !== "off");
+      setCoachOpen(window.innerWidth >= 1280);
     } catch {
       setCoach(true);
     }
@@ -207,28 +209,47 @@ export function Preview() {
           El preview falló: {fault}
         </p>
       ) : null}
-      {coach ? (
+      {coach && !coachOpen ? (
+        <button
+          type="button"
+          data-coach-chip=""
+          onClick={() => setCoachOpen(true)}
+          className="grid size-8 place-items-center rounded-full border border-line bg-raised text-sm font-semibold text-fg shadow-lg"
+          style={{ position: "absolute", top: 10, left: 10, zIndex: 30 }}
+          aria-label="Ver ayuda"
+          title="Ver ayuda"
+        >
+          ?
+        </button>
+      ) : null}
+      {coach && coachOpen ? (
         <div
-          className="flex items-start gap-2 rounded-md border border-line bg-raised px-3 py-2 shadow-lg"
-          style={{ position: "absolute", left: 10, bottom: 56, maxWidth: 250, zIndex: 30, opacity: 0.95, fontSize: 12, lineHeight: 1.35 }}
+          data-coach=""
+          className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3 py-2 shadow-lg"
+          style={{ position: "absolute", top: 10, left: 10, maxWidth: 220, zIndex: 30, opacity: 0.96, fontSize: 12, lineHeight: 1.35 }}
         >
           <p className="text-pretty text-fg">
             Sube tu video, pon la línea roja encima y pulsa Dividir (S). Arrastra hasta que agarre arriba, el centro o abajo. Luego la frase, un look y Exportar.
           </p>
-          <button
-            type="button"
-            className="h-8 shrink-0 rounded-md bg-accent px-2 text-xs font-semibold text-accent-ink"
-            onClick={() => {
-              setCoach(false);
-              try {
-                window.localStorage.setItem("avc-coach", "off");
-              } catch {
-                /* ignore */
-              }
-            }}
-          >
-            Listo
-          </button>
+          <div className="flex gap-2">
+            <button type="button" className="h-8 rounded-md border border-line px-2 text-xs text-fg" onClick={() => setCoachOpen(false)}>
+              Ocultar
+            </button>
+            <button
+              type="button"
+              className="h-8 rounded-md bg-accent px-2 text-xs font-semibold text-accent-ink"
+              onClick={() => {
+                setCoach(false);
+                try {
+                  window.localStorage.setItem("avc-coach", "off");
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              Listo
+            </button>
+          </div>
         </div>
       ) : null}
       <div className="flex h-12 shrink-0 items-center justify-center gap-2 border-t border-line bg-surface px-3">
@@ -246,6 +267,7 @@ export function Preview() {
         <button
           type="button"
           className="grid size-11 place-items-center rounded-full bg-accent text-accent-ink"
+          style={playing ? undefined : { background: "#0c0c0e", boxShadow: "0 0 0 2px #00d4c8, 0 0 14px rgba(0,212,200,0.45)" }}
           onClick={() => void togglePlay()}
           aria-label={playing ? "Pausar" : "Reproducir"}
         >
