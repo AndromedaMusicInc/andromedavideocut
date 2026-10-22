@@ -17,6 +17,7 @@ const ROOT = path.join(__dirname, "app");
 
 protocol.registerSchemesAsPrivileged([
   { scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, codeCache: true } },
+  { scheme: "avcmedia", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
 ]);
 
 const MIME = {
@@ -277,6 +278,7 @@ app.whenReady().then(() => {
   protocol.handle("app", serveApp);
   registerProjectsIpc();
   media.registerMediaIpc();
+  protocol.handle("avcmedia", media.serveProxy);
   ipcMain.handle("viewer:displays", () => {
     const cur = viewer.current();
     const at = cur ? screen.getDisplayMatching(cur.getBounds()).id : viewer.load().displayId ?? screen.getPrimaryDisplay().id;

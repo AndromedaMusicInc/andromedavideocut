@@ -21,6 +21,7 @@ interface DesktopMedia {
   proxy(id: string, p: string, opts?: { raw?: boolean }): Promise<{ ok: boolean; path?: string; codec?: string; mime?: string; error?: string }>;
   read(p: string): Promise<Uint8Array | null>;
   audio(id: string, p: string): Promise<{ ok: boolean; path?: string; error?: string }>;
+  master?(id: string, p: string): Promise<{ ok: boolean; url?: string; error?: string }>;
   log(entry: unknown): Promise<void>;
   onProgress(fn: (id: string, pct: number) => void): () => void;
 }

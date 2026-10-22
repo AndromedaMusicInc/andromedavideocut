@@ -1,5 +1,5 @@
 // Prueba simulada de "Conectar mi Grok": sin configurar, sin sesión, 403, éxito, código de dispositivo, desconectar.
-const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
+const { _electron } = require("/workspace/pwe/node_modules/playwright-core");
 const { spawn } = require("child_process"); const fs = require("fs"); const path = require("path");
 const OUT = path.resolve(__dirname, "../../preview-shots/grok-oauth"); fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -14,7 +14,7 @@ const check = (name, ok, extra = "") => { results.push(`${ok ? "OK " : "FALLA"} 
 (async () => {
   const base = (p) => ({ AVC_XAI_CLIENT_ID: "test-client", AVC_XAI_ISSUER: `http://127.0.0.1:${p}`, AVC_XAI_API_BASE: `http://127.0.0.1:${p}`, AVC_XAI_PORT: String(p + 1) });
   // 1) sin client_id
-  let { app, w } = await launch({}, "/tmp/avc-ud-0");
+  let { app, w } = await launch({}, "/workspace/avc-testmedia/ud-ud-0");
   await w.click("[data-open-settings]"); await w.waitForSelector("[data-ai-status]");
   check("sin sesión: estado bloqueado", /Sin conectar/.test(await w.textContent("[data-ai-status]")));
   await w.screenshot({ path: `${OUT}/01-ajustes-sin-conectar.png` });
@@ -22,8 +22,8 @@ const check = (name, ok, extra = "") => { results.push(`${ok ? "OK " : "FALLA"} 
   check("sin client_id: botón deshabilitado + aviso", await w.isDisabled("[data-connect]"));
   await w.screenshot({ path: `${OUT}/00-sin-configurar.png` }); await app.close();
   // 2) 403 sin suscripción
-  let m = await mock("nosub", 18555); fs.rmSync("/tmp/avc-ud-1", { recursive: true, force: true });
-  ({ app, w } = await launch(base(18555), "/tmp/avc-ud-1"));
+  let m = await mock("nosub", 18555); fs.rmSync("/workspace/avc-testmedia/ud-ud-1", { recursive: true, force: true });
+  ({ app, w } = await launch(base(18555), "/workspace/avc-testmedia/ud-ud-1"));
   await w.click("[data-open-settings]"); await w.click("[data-open-wizard]"); await w.waitForSelector("[data-connect]");
   await w.screenshot({ path: `${OUT}/02-conectar-mi-grok.png` });
   await w.click("[data-connect]"); await w.waitForSelector("[data-login-error]", { timeout: 15000 });
@@ -33,13 +33,13 @@ const check = (name, ok, extra = "") => { results.push(`${ok ? "OK " : "FALLA"} 
   const st = await w.evaluate(() => window.avcDesktop.ai.status());
   check("403: sigue bloqueado", !st.connected); await app.close(); m.kill();
   // 3) éxito por loopback + persistencia + refresh rotado + desconectar
-  m = await mock("ok", 18565); fs.rmSync("/tmp/avc-ud-2", { recursive: true, force: true });
-  ({ app, w } = await launch(base(18565), "/tmp/avc-ud-2"));
+  m = await mock("ok", 18565); fs.rmSync("/workspace/avc-testmedia/ud-ud-2", { recursive: true, force: true });
+  ({ app, w } = await launch(base(18565), "/workspace/avc-testmedia/ud-ud-2"));
   await w.click("[data-open-settings]"); await w.click("[data-open-wizard]"); await w.click("[data-connect]");
   await w.waitForSelector("[data-connected-as]", { timeout: 15000 });
   check("éxito: Conectado como", /¡Conectado como Wilhelm Prueba!/.test(await w.textContent("[data-connected-as]")));
   await w.screenshot({ path: `${OUT}/04-conectado.png` });
-  const raw = fs.readFileSync("/tmp/avc-ud-2/xai-session.bin"); check("sesión cifrada en disco", !raw.toString("latin1").includes("at-rt"));
+  const raw = fs.readFileSync("/workspace/avc-testmedia/ud-ud-2/xai-session.bin"); check("sesión cifrada en disco", !raw.toString("latin1").includes("at-rt"));
   const models = await w.evaluate(() => window.avcDesktop.ai.request({ method: "GET", path: "/v1/models" }));
   check("llamada API desde main", models.status === 200);
   const blocked = await w.evaluate(() => window.avcDesktop.ai.request({ method: "GET", path: "/v1/chat/completions" }));
@@ -47,16 +47,16 @@ const check = (name, ok, extra = "") => { results.push(`${ok ? "OK " : "FALLA"} 
   const dl = await w.evaluate(() => window.avcDesktop.ai.download("https://evil.example.com/a.mp4"));
   check("descarga fuera de x.ai bloqueada", dl.status === 400);
   await app.close();
-  ({ app, w } = await launch(base(18565), "/tmp/avc-ud-2"));
+  ({ app, w } = await launch(base(18565), "/workspace/avc-testmedia/ud-ud-2"));
   check("sesión persiste al reiniciar", (await w.evaluate(() => window.avcDesktop.ai.status())).connected);
   await w.click("[data-open-settings]"); await w.waitForSelector("[data-disconnect]");
   await w.screenshot({ path: `${OUT}/06-ajustes-conectado.png` });
   await w.click("[data-disconnect]"); await sleep(500);
-  check("desconectar bloquea", !(await w.evaluate(() => window.avcDesktop.ai.status())).connected && !fs.existsSync("/tmp/avc-ud-2/xai-session.bin"));
+  check("desconectar bloquea", !(await w.evaluate(() => window.avcDesktop.ai.status())).connected && !fs.existsSync("/workspace/avc-testmedia/ud-ud-2/xai-session.bin"));
   await app.close();
   // 4) respaldo con código de dispositivo
-  fs.rmSync("/tmp/avc-ud-3", { recursive: true, force: true });
-  ({ app, w } = await launch({ ...base(18565), AVC_TEST_BROWSER: "device" }, "/tmp/avc-ud-3"));
+  fs.rmSync("/workspace/avc-testmedia/ud-ud-3", { recursive: true, force: true });
+  ({ app, w } = await launch({ ...base(18565), AVC_TEST_BROWSER: "device" }, "/workspace/avc-testmedia/ud-ud-3"));
   await w.click("[data-open-settings]"); await w.click("[data-open-wizard]"); await w.click("[data-connect]");
   await w.waitForSelector("[data-use-code]"); await w.screenshot({ path: `${OUT}/03-esperando-navegador.png` });
   await w.click("[data-use-code]"); await w.waitForSelector("[data-user-code]");

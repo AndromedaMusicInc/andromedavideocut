@@ -81,14 +81,17 @@ async function proxyPlans() {
 }
 
 const jobs = new Map();
-function ffmpegProxy(id, input, duration, onProgress) {
+/** master=true: resolución original (máx. 4K) y bitrate alto, para exportar desde el original y no desde el proxy. */
+function ffmpegProxy(id, input, duration, onProgress, master = false) {
   return (async () => {
     fs.mkdirSync(proxyDir(), { recursive: true });
     const plans = await proxyPlans();
     let lastErr = "no hay códec para el proxy";
     for (const plan of plans) {
-      const out = path.join(proxyDir(), `${id}.${plan.ext}`);
-      const args = ["-hide_banner", "-y", "-nostdin", "-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-vf", "scale=-2:'min(1080,ih)':flags=bicubic,format=yuv420p", "-fps_mode", "cfr", ...plan.v, ...plan.a, "-ac", "2", ...plan.mux, "-progress", "pipe:1", "-nostats", out];
+      const out = path.join(proxyDir(), `${id}${master ? "-master" : ""}.${plan.ext}`);
+      const vargs = master ? plan.v.map((x) => (/^\d+M$/.test(x) ? "40M" : x)) : plan.v;
+      const scale = master ? "scale='trunc(min(iw,3840)/2)*2':-2:flags=lanczos,format=yuv420p" : "scale=-2:'min(1080,ih)':flags=bicubic,format=yuv420p";
+      const args = ["-hide_banner", "-y", "-nostdin", "-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-vf", scale, "-fps_mode", "cfr", ...vargs, ...plan.a, "-ac", "2", ...plan.mux, "-progress", "pipe:1", "-nostats", out];
       const res = await new Promise((resolve) => {
         const p = spawn(ffmpegPath(), args, { windowsHide: true });
         jobs.set(id, p);
@@ -133,6 +136,26 @@ async function redlineToMov(id, input) {
   return { ok: true, path: path.join(outDir, mov) };
 }
 
+const proxyUrl = (p) => `avcmedia://proxy/${encodeURIComponent(path.basename(p))}`;
+/** avcmedia://proxy/<archivo>: sirve solo archivos de la carpeta de proxies, con Range (206) para <video>. */
+async function serveProxy(request) {
+  const { Readable } = require("stream");
+  const name = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ""));
+  const file = path.join(proxyDir(), path.basename(name));
+  let stat;
+  try { stat = await fs.promises.stat(file); } catch { return new Response("No encontrado", { status: 404 }); }
+  const type = /\.webm$/i.test(file) ? "video/webm" : /\.wav$/i.test(file) ? "audio/wav" : "video/mp4";
+  const base = { "Content-Type": type, "Accept-Ranges": "bytes", "Access-Control-Allow-Origin": "*" };
+  const m = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") || "");
+  if (m && (m[1] || m[2])) {
+    const start = m[1] ? Number(m[1]) : Math.max(0, stat.size - Number(m[2]));
+    const end = m[1] && m[2] ? Math.min(Number(m[2]), stat.size - 1) : stat.size - 1;
+    if (start >= stat.size || start > end) return new Response(null, { status: 416, headers: { ...base, "Content-Range": `bytes */${stat.size}` } });
+    return new Response(Readable.toWeb(fs.createReadStream(file, { start, end })), { status: 206, headers: { ...base, "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Content-Length": String(end - start + 1) } });
+  }
+  return new Response(Readable.toWeb(fs.createReadStream(file)), { status: 200, headers: { ...base, "Content-Length": String(stat.size) } });
+}
+
 function registerMediaIpc(getWin) {
   ipcMain.handle("media:info", () => ({ ffmpeg: hasFfmpeg(), redline: Boolean(findRedline()), log: logFile() }));
   ipcMain.handle("media:probe", (_e, file) => probe(String(file)));
@@ -168,6 +191,18 @@ function registerMediaIpc(getWin) {
     log({ evento: "audio-wav", id, file: String(file), entrada: info.ok ? info.audio : null, ...res });
     return res;
   });
+  // Exportar desde el original: copia de alta calidad a resolución completa (se guarda en caché).
+  ipcMain.handle("media:master", async (e, id, file) => {
+    id = String(id).replace(/[^a-z0-9_-]/gi, "");
+    const send = (pct) => { try { e.sender.send("media:progress", `${id}:master`, pct); } catch { /* */ } };
+    const cached = ["mp4", "webm"].map((x) => path.join(proxyDir(), `${id}-master.${x}`)).find((p) => fs.existsSync(p) && fs.statSync(p).size > 0);
+    if (cached) return { ok: true, url: proxyUrl(cached), cached: true };
+    if (!fs.existsSync(String(file))) return { ok: false, error: "no se encuentra el archivo original" };
+    const info = await probe(String(file));
+    const res = await ffmpegProxy(id, String(file), info.ok ? info.duration : 0, send, true);
+    log({ evento: "master-export", id, file: String(file), ...res });
+    return res.ok ? { ok: true, url: proxyUrl(res.path) } : res;
+  });
   ipcMain.handle("media:read", (_e, p) => {
     const file = path.resolve(String(p));
     if (!file.startsWith(path.resolve(proxyDir()) + path.sep)) return null; // solo proxies propios
@@ -175,4 +210,4 @@ function registerMediaIpc(getWin) {
   });
 }
 
-module.exports = { registerMediaIpc, hasFfmpeg, findRedline, logFile, ffDir };
+module.exports = { registerMediaIpc, serveProxy, hasFfmpeg, findRedline, logFile, ffDir };

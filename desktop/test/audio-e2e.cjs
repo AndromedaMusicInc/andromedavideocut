@@ -1,6 +1,6 @@
 // Comprueba que la vista previa SUENA en Electron: graba el monitor de un sink nulo de PulseAudio
 // mientras se pulsa Reproducir y mide el nivel RMS. Uso: xvfb-run -a node test/audio-e2e.cjs [--dist <dir-unpacked>]
-const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
+const { _electron } = require("/workspace/pwe/node_modules/playwright-core");
 const { spawn } = require("child_process"); const path = require("path"); const fs = require("fs");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function record(sec) {
@@ -13,7 +13,7 @@ function record(sec) {
   });
 }
 (async () => {
-  const ud = fs.mkdtempSync("/tmp/avc-audio-");
+  const ud = fs.mkdtempSync("/workspace/avc-testmedia/ud-audio-");
   const app = await _electron.launch({ executablePath: require(path.join(__dirname, "../node_modules/electron")), args: [path.join(__dirname, ".."), `--user-data-dir=${ud}`, "--no-sandbox"], env: { ...process.env } });
   const w = await app.firstWindow();
   await w.waitForSelector("[aria-label='Reproducir'], [data-welcome]", { timeout: 30000 });

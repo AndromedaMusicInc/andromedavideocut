@@ -1,13 +1,13 @@
 // 0.0.3: importa archivos reales de muchos formatos (ruta con espacios y acentos) y comprueba: aparece en Medios,
 // miniatura, clip en la línea de tiempo, el visor tiene cuadros, y mensajes claros para lo no compatible.
 // MEDIA_DIR con los archivos (los genera test/make-media.sh). Salida: tabla en consola + preview-shots/v0.0.3/.
-const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
+const { _electron } = require("/workspace/pwe/node_modules/playwright-core");
 const fs = require("fs"); const path = require("path");
-const DIR = process.env.MEDIA_DIR || "/tmp/avc media/vídeos de prueba";
+const DIR = process.env.MEDIA_DIR || "/workspace/avc-testmedia/vídeos de prueba";
 const OUT = path.resolve(__dirname, "../../preview-shots/v0.0.3"); fs.mkdirSync(OUT, { recursive: true });
 const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY) : null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const UD = "/tmp/avc-media"; fs.rmSync(UD, { recursive: true, force: true });
+const UD = "/workspace/avc-testmedia/ud-media"; fs.rmSync(UD, { recursive: true, force: true });
 (async () => {
   const app = await _electron.launch({ executablePath: require(path.join(__dirname, "../node_modules/electron")), args: [path.join(__dirname, ".."), `--user-data-dir=${UD}`, "--no-sandbox"], env: { ...process.env } });
   const w = await app.firstWindow(); await w.setViewportSize({ width: 1440, height: 900 }).catch(() => {});
@@ -69,6 +69,10 @@ const UD = "/tmp/avc-media"; fs.rmSync(UD, { recursive: true, force: true });
   for (const r of rows) r.exported = exp[r.f.replace(/\.[^.]+$/, "").slice(0, 42)];
   console.log(JSON.stringify(rows, null, 1));
   for (const r of rows) console.log(`${r.inBin && r.frames ? "OK   " : r.msg ? "MSG  " : "FALLA"} ${r.f.padEnd(26)} bin=${r.inBin} thumb=${r.thumb} clip=${r.clip} cuadros=${r.frames} export=${r.exported} ${r.status} ${r.msg} (${r.ms} ms)`);
+  const mlog = fs.readFileSync(path.join(UD, "logs", "medios.log"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l.slice(l.indexOf(" ") + 1)));
+  const proxies = mlog.filter((e) => e.evento === "proxy" && e.ok).length, masters = mlog.filter((e) => e.evento === "master-export" && e.ok).length;
+  console.log(`EXPORT DESDE ORIGINAL: ${masters} copias maestras para ${proxies} proxies ${masters >= proxies && proxies > 0 ? "OK" : "FALLA"}`);
+  console.log(`EXPORT con imagen en cada clip: ${rows.filter((r) => r.inBin).every((r) => r.exported !== false) ? "OK" : "FALLA"}`);
   console.log("LOGS\n" + logs.join("\n"));
   await app.close();
 })().catch((e) => { console.error("ERROR", e); process.exit(2); });

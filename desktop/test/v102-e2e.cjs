@@ -2,12 +2,12 @@
 // clic = vista previa, arrastrar = agrega, Ctrl+S guarda en disco, guardado al cambiar de proyecto, aviso si falla.
 // 1.0.1: migración 1.0.0 → proyectos, bienvenida, nuevo/renombrar/duplicar/borrar, guardado en disco,
 // feed (empaquetado y caché), audio (selector, vúmetro, Probar sonido) y exportación MP4 con AAC.
-const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
+const { _electron } = require("/workspace/pwe/node_modules/playwright-core");
 const fs = require("fs"); const path = require("path"); const { execFileSync } = require("child_process");
 const OUT = path.resolve(__dirname, "../../preview-shots/v0.0.2/desktop"); fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = []; const check = (n, ok, x = "") => res.push(`${ok ? "OK   " : "FALLA"} ${n}${x ? " — " + x : ""}`);
-const UD = "/tmp/avc-v102"; fs.rmSync(UD, { recursive: true, force: true });
+const UD = "/workspace/avc-testmedia/ud-v102"; fs.rmSync(UD, { recursive: true, force: true });
 const launch = async () => {
   const app = await _electron.launch({ executablePath: require(path.join(__dirname, "../node_modules/electron")), args: [path.join(__dirname, ".."), `--user-data-dir=${UD}`, "--no-sandbox"] });
   // Simula "sin internet" para el feed (desde 1.0.1 el feed ya está publicado en GitHub Pages).

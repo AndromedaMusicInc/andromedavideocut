@@ -2,7 +2,7 @@
 # ("Formato no compatible en la web: … Más formatos en la versión de PC"), nunca un clip en blanco.
 from playwright.sync_api import sync_playwright
 import subprocess,time,os,sys
-D=os.environ.get("MEDIA_DIR","/tmp/avc media/vídeos de prueba")
+D=os.environ.get("MEDIA_DIR","/workspace/avc-testmedia/vídeos de prueba")
 srv=subprocess.Popen(["python3","-m","http.server","18733","-d","preview"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
 R=[]
 def ok(n,c,d=""): R.append(bool(c)); print("OK   " if c else "FALLA",n,("— "+str(d)) if d!="" else "")

@@ -24,6 +24,26 @@ export class MediaPool {
     }
   }
 
+  /** Cambia temporalmente la fuente de un video (exportar desde el original). Devuelve cómo restaurarla. */
+  async swapSource(id: string, url: string): Promise<() => void> {
+    const el = this.videos.get(id);
+    if (!el) return () => undefined;
+    const old = el.src;
+    await new Promise<void>((resolve, reject) => {
+      const t = window.setTimeout(() => reject(new Error("tiempo agotado")), 30000);
+      el.addEventListener("loadeddata", () => { window.clearTimeout(t); resolve(); }, { once: true });
+      el.addEventListener("error", () => { window.clearTimeout(t); reject(new Error("no se pudo abrir el original")); }, { once: true });
+      el.crossOrigin = "anonymous"; // sin esto el lienzo queda "contaminado" y no se puede exportar
+      el.src = url;
+      el.load();
+    });
+    return () => {
+      el.removeAttribute("crossorigin");
+      el.src = old;
+      el.load();
+    };
+  }
+
   drop(id: string) {
     const video = this.videos.get(id);
     if (video) {

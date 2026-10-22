@@ -1,9 +1,9 @@
 // 0.0.3: audio en todos los formatos. Por archivo: importa, forma de onda, búfer en el mezclador, suena por la
 // salida (graba el sink nulo "avc" de PulseAudio), y al final exporta con huecos de 1 s entre clips para comprobar
 // sincronía (sonido dentro de cada clip, silencio en los huecos) y que el audio exportado es AAC.
-const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
+const { _electron } = require("/workspace/pwe/node_modules/playwright-core");
 const fs = require("fs"); const path = require("path"); const { spawn, spawnSync } = require("child_process");
-const DIR = process.env.MEDIA_DIR || "/tmp/avc media/audios de prueba";
+const DIR = process.env.MEDIA_DIR || "/workspace/avc-testmedia/audios de prueba";
 const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY) : null;
 const SKIP = /1GB|R3D|NEV/;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -19,7 +19,7 @@ function rmsAt(file, t, d) {
   const r = spawnSync("ffmpeg", ["-hide_banner", "-ss", String(t), "-t", String(d), "-i", file, "-vn", "-af", "volumedetect", "-f", "null", "-"]);
   return Number((/mean_volume: (-?[\d.]+) dB/.exec(String(r.stderr)) || [])[1] ?? -99);
 }
-const UD = "/tmp/avc-audiomedia"; fs.rmSync(UD, { recursive: true, force: true });
+const UD = "/workspace/avc-testmedia/ud-audiomedia"; fs.rmSync(UD, { recursive: true, force: true });
 (async () => {
   const app = await _electron.launch({ executablePath: require(path.join(__dirname, "../node_modules/electron")), args: [path.join(__dirname, ".."), `--user-data-dir=${UD}`, "--no-sandbox"], env: { ...process.env } });
   const w = await app.firstWindow(); await w.setViewportSize({ width: 1440, height: 900 }).catch(() => {});

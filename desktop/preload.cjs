@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld("avcDesktop", {
     proxy: (id, p, opts) => ipcRenderer.invoke("media:proxy", String(id), String(p), opts || {}),
     read: (p) => ipcRenderer.invoke("media:read", String(p)),
     audio: (id, p) => ipcRenderer.invoke("media:audio", String(id), String(p)),
+    master: (id, p) => ipcRenderer.invoke("media:master", String(id), String(p)),
     cancel: (id) => ipcRenderer.invoke("media:cancel", String(id)),
     log: (entry) => ipcRenderer.invoke("media:log", entry),
     openLog: () => ipcRenderer.invoke("media:open-log"),

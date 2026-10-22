@@ -1,11 +1,11 @@
 // Beta 0.0.2 (antes 1.0.2): barra de uso semanal de Grok. Bloqueada sin cuenta; con cuenta cuenta los pedidos de IA hechos
 // desde esta app (lunes→domingo) y muestra el límite por minuto solo si xAI lo manda en cabeceras.
-const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
+const { _electron } = require("/workspace/pwe/node_modules/playwright-core");
 const { spawn } = require("child_process"); const fs = require("fs"); const path = require("path");
 const OUT = path.resolve(__dirname, "../../preview-shots/v0.0.2"); fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = []; const check = (n, ok, x = "") => res.push(`${ok ? "OK   " : "FALLA"} ${n}${x ? " — " + x : ""}`);
-const P = 18575; const UD = "/tmp/avc-usage"; fs.rmSync(UD, { recursive: true, force: true });
+const P = 18575; const UD = "/workspace/avc-testmedia/ud-usage"; fs.rmSync(UD, { recursive: true, force: true });
 (async () => {
   const m = spawn("node", [path.join(__dirname, "mock-xai.cjs")], { env: { ...process.env, MODE: "ok", PORT: String(P) }, stdio: "pipe" }); await sleep(500);
   const app = await _electron.launch({ executablePath: require("electron"), args: [path.join(__dirname, ".."), `--user-data-dir=${UD}`, "--password-store=basic", "--no-sandbox"],

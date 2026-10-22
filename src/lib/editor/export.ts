@@ -4,6 +4,7 @@ import { pause, play, setFrameSink } from "@/lib/editor/engine";
 import { mixStereo } from "@/lib/editor/mixdown";
 import { playback } from "@/lib/editor/playback";
 import { pool } from "@/lib/editor/pool";
+import { desktopMedia } from "@/lib/editor/import-media";
 import { useEditor } from "@/lib/editor/store";
 import { contentEnd } from "@/lib/editor/time";
 import { ASPECTS, type AspectId } from "@/lib/editor/types";
@@ -123,7 +124,27 @@ export async function exportVideo(
   const fileName = (options?.fileName || name || "AndromedaVideoCut").trim();
   const restore = playback.time;
   pause();
+  const restoreSources: (() => void)[] = [];
   try {
+    // 0.0.3 (PC): lo que se edita con proxy se exporta desde el archivo original (copia a resolución completa).
+    const dm = desktopMedia();
+    const used = new Set(clips.map((c) => c.assetId).filter(Boolean));
+    const proxied = useEditor.getState().assets.filter((a) => a.proxy && a.path && used.has(a.id));
+    if (dm?.master && proxied.length) {
+      for (const [i, a] of proxied.entries()) {
+        if (isCancelled()) return { ok: false, cancelled: true };
+        useEditor.setState({ busy: `Preparando original ${i + 1}/${proxied.length}: ${a.name}` });
+        const r = await dm.master(a.id, a.path!).catch((e: unknown) => ({ ok: false, error: String(e) }) as { ok: boolean; url?: string; error?: string });
+        if (r.ok && r.url) {
+          try {
+            restoreSources.push(await pool.swapSource(a.id, r.url));
+          } catch {
+            useEditor.getState().tell(`⚠ ${a.name}: no se pudo abrir el original; se exporta desde el proxy.`);
+          }
+        } else useEditor.getState().tell(`⚠ ${a.name}: no se pudo preparar el original (${r.error ?? "error"}); se exporta desde el proxy.`);
+      }
+      useEditor.setState({ busy: null });
+    }
     // MP4 solo con audio AAC (mp4a.40.2). Si no hay AAC, WebM con Opus de forma explícita.
     let aacMissing = false;
     for (const container of ["mp4", "webm"] as const) {
@@ -142,6 +163,8 @@ export async function exportVideo(
     const rec = await exportRecorder(width, height, end, fileName, fps, withAudio, onProgress, isCancelled);
     return rec.ok ? { ...rec, aacMissing: aacMissing || (withAudio && rec.format === "webm") } : rec;
   } finally {
+    for (const undo of restoreSources) undo();
+    useEditor.setState({ busy: null });
     setFrameSink(null);
     if (playback.playing) pause();
     playback.setTime(restore);
