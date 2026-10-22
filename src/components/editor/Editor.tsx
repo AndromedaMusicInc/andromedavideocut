@@ -4,7 +4,7 @@ import { Preview } from "@/components/editor/Preview";
 import { Timeline } from "@/components/editor/Timeline";
 import { mixer } from "@/lib/editor/audio";
 import { seek, togglePlay } from "@/lib/editor/engine";
-import { exportVideo, FRAME_RATES, openBlob, QUALITIES, saveBlob, type FrameRate, type QualityId } from "@/lib/editor/export";
+import { EXPORT_PRESETS, exportVideo, FRAME_RATES, loadPreset, openBlob, outputSize, QUALITIES, saveBlob, savePreset, type FrameRate, type PresetId, type QualityId } from "@/lib/editor/export";
 import { idbGet, loadProject, saveProject } from "@/lib/editor/persist";
 import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
@@ -37,6 +37,24 @@ export function Editor() {
   const [fileName, setFileName] = useState("");
   const [quality, setQuality] = useState<QualityId>("1080");
   const [fps, setFps] = useState<FrameRate>(30);
+  const [preset, setPreset] = useState<PresetId>("reel");
+  useEffect(() => {
+    const saved = loadPreset();
+    setPreset(saved.preset);
+    setQuality(saved.quality);
+    setFps(saved.fps);
+  }, []);
+  function choosePreset(id: PresetId) {
+    const p = EXPORT_PRESETS.find((item) => item.id === id);
+    if (!p) return;
+    setPreset(id);
+    if (id !== "custom") {
+      setQuality(p.quality);
+      setFps(p.fps);
+      if (p.aspect) setAspect(p.aspect);
+    }
+    savePreset({ preset: id, quality: id === "custom" ? quality : p.quality, fps: id === "custom" ? fps : p.fps });
+  }
   const [withAudio, setWithAudio] = useState(true);
   const [over, setOver] = useState(false);
   const notice = useEditor((s) => s.notice);
@@ -164,6 +182,7 @@ export function Editor() {
         () => cancel.current,
         { fileName: fileName.trim() || name, quality, fps, audio: withAudio },
       );
+      savePreset({ preset, quality, fps });
       if (result.ok) {
         setExportFile({ blob: result.blob, name: result.file });
         const note =
@@ -314,7 +333,7 @@ export function Editor() {
 
       {exportOpen && !exporting ? (
         <div className="absolute inset-0 z-40 grid place-items-center bg-bg/75 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="w-full max-w-sm rounded-lg border border-line bg-raised p-5">
+          <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-raised p-5">
             <h2 id="export-title" className="text-base font-semibold">Exportar</h2>
             <label className="mt-3 flex flex-col gap-1 text-xs text-muted">
               Nombre del archivo
@@ -324,38 +343,74 @@ export function Editor() {
                 className="h-11 rounded-md border border-line bg-sunken px-3 text-sm text-fg"
               />
             </label>
-            <p className="mt-3 text-xs text-muted">Calidad</p>
-            <div className="mt-1 grid grid-cols-5 gap-1">
-              {QUALITIES.map((item) => (
+            <p className="mt-3 text-xs text-muted">Preset</p>
+            <div data-presets="" className="mt-1 grid grid-cols-3 gap-1">
+              {EXPORT_PRESETS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setQuality(item.id)}
+                  data-preset={item.id}
+                  aria-pressed={preset === item.id}
+                  onClick={() => choosePreset(item.id)}
                   className={cn(
-                    "h-11 rounded-md border text-xs font-medium",
-                    quality === item.id ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
+                    "flex min-h-11 flex-col items-center justify-center rounded-md border px-1 py-1 text-center text-xs font-medium leading-tight",
+                    preset === item.id ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
                   )}
                 >
-                  {item.label}
+                  <span>{item.name}</span>
+                  <span className="text-[10px] opacity-75">{item.hint}</span>
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-xs text-muted">Cuadros por segundo</p>
-            <div className="mt-1 grid grid-cols-3 gap-1">
-              {FRAME_RATES.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setFps(item)}
-                  className={cn(
-                    "h-11 rounded-md border text-xs font-medium",
-                    fps === item ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
-                  )}
-                >
-                  {item} fps
-                </button>
-              ))}
-            </div>
+            {preset === "custom" ? (
+              <>
+                <p className="mt-3 text-xs text-muted">Resolución</p>
+                <div className="mt-1 grid grid-cols-5 gap-1">
+                  {QUALITIES.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setQuality(item.id);
+                        savePreset({ preset, quality: item.id, fps });
+                      }}
+                      className={cn(
+                        "h-10 rounded-md border text-xs font-medium",
+                        quality === item.id ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-muted">Cuadros por segundo</p>
+                <div className="mt-1 grid grid-cols-6 gap-1">
+                  {FRAME_RATES.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      data-fps={item}
+                      onClick={() => {
+                        setFps(item);
+                        savePreset({ preset, quality, fps: item });
+                      }}
+                      className={cn(
+                        "h-10 rounded-md border text-xs font-medium",
+                        fps === item ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
+                      )}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            <p data-export-summary="" className="mt-2 text-xs text-fg tabular-nums">
+              {(() => {
+                const size = outputSize(aspect, quality);
+                return `${aspect} · ${size.width}×${size.height} · ${fps} fps`;
+              })()}
+            </p>
             <p className="mt-3 text-xs text-muted">Audio</p>
             <div className="mt-1 grid grid-cols-2 gap-1">
               <button

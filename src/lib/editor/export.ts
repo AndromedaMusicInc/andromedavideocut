@@ -6,7 +6,7 @@ import { playback } from "@/lib/editor/playback";
 import { pool } from "@/lib/editor/pool";
 import { useEditor } from "@/lib/editor/store";
 import { contentEnd } from "@/lib/editor/time";
-import { ASPECTS } from "@/lib/editor/types";
+import { ASPECTS, type AspectId } from "@/lib/editor/types";
 
 const AUDIO_RATE = 48000;
 
@@ -18,9 +18,65 @@ export const QUALITIES = [
   { id: "6k", label: "6K", scale: 3240 / 1080, bitrate: 30_000_000 },
 ] as const;
 
-export const FRAME_RATES = [24, 30, 60] as const;
+export const FRAME_RATES = [24, 25, 30, 48, 50, 60] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export type QualityId = (typeof QUALITIES)[number]["id"];
+
+export type PresetId = "reel" | "shorts" | "yt30" | "yt60" | "feed11" | "feed45" | "draft" | "lofi" | "custom";
+
+/** Presets con nombre. `aspect` null = usa el formato actual del proyecto. */
+export const EXPORT_PRESETS: {
+  id: PresetId;
+  name: string;
+  hint: string;
+  aspect: AspectId | null;
+  quality: QualityId;
+  fps: FrameRate;
+}[] = [
+  { id: "reel", name: "Reel / TikTok", hint: "9:16 · 30 fps", aspect: "9:16", quality: "1080", fps: 30 },
+  { id: "shorts", name: "Shorts 60", hint: "9:16 · 60 fps", aspect: "9:16", quality: "1080", fps: 60 },
+  { id: "yt30", name: "YouTube", hint: "16:9 · 30 fps", aspect: "16:9", quality: "1080", fps: 30 },
+  { id: "yt60", name: "YouTube 60", hint: "16:9 · 60 fps", aspect: "16:9", quality: "1080", fps: 60 },
+  { id: "feed11", name: "Feed cuadrado", hint: "1:1 · 30 fps", aspect: "1:1", quality: "1080", fps: 30 },
+  { id: "feed45", name: "Feed vertical", hint: "4:5 · 30 fps", aspect: "4:5", quality: "1080", fps: 30 },
+  { id: "draft", name: "Borrador rápido", hint: "720p · 24 fps", aspect: null, quality: "720", fps: 24 },
+  { id: "lofi", name: "Lo-fi", hint: "24 fps", aspect: null, quality: "1080", fps: 24 },
+  { id: "custom", name: "Personalizado", hint: "Tú eliges", aspect: null, quality: "1080", fps: 30 },
+];
+
+const PRESET_KEY = "avc-export-preset";
+
+export interface SavedPreset {
+  preset: PresetId;
+  quality: QualityId;
+  fps: FrameRate;
+}
+
+export function loadPreset(): SavedPreset {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(PRESET_KEY) || "null") as Partial<SavedPreset> | null;
+    const preset = EXPORT_PRESETS.find((p) => p.id === raw?.preset) ?? EXPORT_PRESETS[0];
+    const quality = QUALITIES.some((q) => q.id === raw?.quality) ? (raw!.quality as QualityId) : preset.quality;
+    const fps = (FRAME_RATES as readonly number[]).includes(Number(raw?.fps)) ? (raw!.fps as FrameRate) : preset.fps;
+    return { preset: preset.id, quality, fps };
+  } catch {
+    return { preset: "reel", quality: "1080", fps: 30 };
+  }
+}
+
+export function savePreset(value: SavedPreset) {
+  try {
+    window.localStorage.setItem(PRESET_KEY, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function outputSize(aspect: AspectId, quality: QualityId) {
+  const base = ASPECTS[aspect];
+  const q = QUALITIES.find((item) => item.id === quality) ?? QUALITIES[1];
+  return { width: Math.round((base.w * q.scale) / 2) * 2, height: Math.round((base.h * q.scale) / 2) * 2 };
+}
 
 export interface ExportOptions {
   fileName?: string;

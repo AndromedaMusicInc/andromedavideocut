@@ -1,0 +1,57 @@
+{
+  "name": "andromedavideocut-desktop",
+  "productName": "AndromedaVideoCut",
+  "version": "1.0.0",
+  "description": "AndromedaVideoCut — editor de video de Andromeda Music Inc. para escritorio",
+  "author": "Andromeda Music Inc.",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "prepare-app": "node scripts/copy-build.cjs",
+    "start": "npm run prepare-app && electron .",
+    "dist:win": "npm run prepare-app && electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.andromedamusicinc.videocut",
+    "productName": "AndromedaVideoCut",
+    "executableName": "AndromedaVideoCut",
+    "artifactName": "AndromedaVideoCut-Setup-${version}-x64.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "app/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AndromedaVideoCut",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "language": "3082"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
+  }
+}
