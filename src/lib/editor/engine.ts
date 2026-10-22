@@ -54,7 +54,8 @@ export function startEngine(drawPreview: (time: number) => void) {
       const end = contentEnd(useEditor.getState().clips);
       const next = playback.time + dt;
       if (next >= end) {
-        playback.setTime(Math.max(0, end));
+        // Mantener el último fotograma visible (los clips terminan justo en `end`).
+        playback.setTime(Math.max(0, end - 1 / 60));
         pause();
       } else {
         playback.setTime(next);

@@ -10,6 +10,7 @@ import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
 import { ASPECTS, type AspectId, type Asset } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
+import { fullscreenElement, onFullscreenChange, toggleFullscreen } from "@/lib/fullscreen";
 import { Download, LoaderCircle, Maximize, Minimize } from "lucide-react";
 import { ingestFile } from "@/lib/editor/import-media";
 import { useEffect, useRef, useState } from "react";
@@ -168,11 +169,11 @@ export function Editor() {
         const note =
           result.audio === "off"
             ? `${result.file} está listo, sin audio. Pulsa Descargar.`
-            : result.audio === "aac"
-            ? `${result.file} está listo. Pulsa Descargar para guardarlo. Es MP4 con AAC.`
-            : result.audio === "opus"
-              ? `${result.file} está listo. Pulsa Descargar. Si Instagram no lo toma, expórtalo en Safari.`
-              : `${result.file} está listo. Pulsa Descargar. Este navegador lo bajó en WebM.`;
+            : result.format === "mp4" && result.audio === "aac"
+              ? `${result.file} está listo. Pulsa Descargar. Es MP4 con audio AAC, listo para Instagram y TikTok.`
+              : result.aacMissing
+                ? `Este navegador no puede codificar audio AAC, así que ${result.file} salió en WebM con audio Opus. Para MP4 con AAC exporta desde Chrome de escritorio o Safari. Pulsa Descargar.`
+                : `${result.file} está listo. Pulsa Descargar. Este navegador lo bajó en WebM.`;
         setExportNote(note);
       }
     } catch (err) {
@@ -313,8 +314,8 @@ export function Editor() {
 
       {exportOpen && !exporting ? (
         <div className="absolute inset-0 z-40 grid place-items-center bg-bg/75 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-line bg-raised p-5">
-            <h2 className="text-base font-semibold">Exportar</h2>
+          <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="w-full max-w-sm rounded-lg border border-line bg-raised p-5">
+            <h2 id="export-title" className="text-base font-semibold">Exportar</h2>
             <label className="mt-3 flex flex-col gap-1 text-xs text-muted">
               Nombre del archivo
               <input
@@ -400,8 +401,8 @@ export function Editor() {
 
       {exporting || exportError || exportNote ? (
         <div className="absolute inset-0 z-40 grid place-items-center bg-bg/75 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-line bg-raised p-5">
-            <h2 className="text-base font-semibold">{exportError ? "No se exportó" : exportNote ? "Listo" : "Exportando"}</h2>
+          <div role="dialog" aria-modal="true" aria-labelledby="export-status-title" className="w-full max-w-sm rounded-lg border border-line bg-raised p-5">
+            <h2 id="export-status-title" className="text-base font-semibold">{exportError ? "No se exportó" : exportNote ? "Listo" : "Exportando"}</h2>
             <p className="mt-1 text-sm text-muted">
               {exportError ?? exportNote ?? "Estamos armando el archivo. No cierres la pestaña."}
             </p>
@@ -472,50 +473,22 @@ export function Editor() {
   );
 }
 
-type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void };
-type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+const BLOCKED_MSG = "Aquí no se permite pantalla completa. Abrí AndromedaVideoCut en una pestaña nueva.";
 
-function fsActive() {
-  const d = document as FsDoc;
-  return Boolean(d.fullscreenElement ?? d.webkitFullscreenElement);
-}
-
-/** Pantalla completa propia (Fullscreen API) con alternar y respaldo si el iframe no lo permite. */
+/** Pantalla completa de toda la app (la del visor está en la barra de reproducción). */
 function FullscreenButton() {
   const [on, setOn] = useState(false);
-  useEffect(() => {
-    const sync = () => setOn(fsActive());
-    document.addEventListener("fullscreenchange", sync);
-    document.addEventListener("webkitfullscreenchange", sync);
-    return () => {
-      document.removeEventListener("fullscreenchange", sync);
-      document.removeEventListener("webkitfullscreenchange", sync);
-    };
-  }, []);
-  async function toggle() {
-    const d = document as FsDoc;
-    const el = document.documentElement as FsEl;
-    try {
-      if (fsActive()) {
-        await (d.exitFullscreen ? d.exitFullscreen() : d.webkitExitFullscreen?.());
-        return;
-      }
-      const enabled = d.fullscreenEnabled ?? Boolean(el.webkitRequestFullscreen);
-      if (!enabled) throw new Error("bloqueado");
-      await (el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen?.());
-    } catch {
-      useEditor
-        .getState()
-        .tell("Este navegador o la página que lo incrusta no permite pantalla completa. Abro el editor en una pestaña nueva.");
-      window.open(window.location.href, "_blank", "noopener");
-    }
-  }
+  useEffect(() => onFullscreenChange(() => setOn(fullscreenElement() === document.documentElement)), []);
   return (
     <button
       type="button"
-      onClick={() => void toggle()}
-      aria-label={on ? "Salir de pantalla completa" : "Pantalla completa"}
-      title={on ? "Salir de pantalla completa" : "Pantalla completa"}
+      onClick={() => {
+        void toggleFullscreen(document.documentElement).then((r) => {
+          if (r === "blocked") useEditor.getState().tell(BLOCKED_MSG);
+        });
+      }}
+      aria-label={on ? "Salir de pantalla completa" : "App en pantalla completa"}
+      title={on ? "Salir de pantalla completa" : "App en pantalla completa"}
       data-fullscreen-toggle=""
       className="grid size-11 shrink-0 place-items-center rounded-md border border-line bg-raised text-fg hover:bg-surface"
     >

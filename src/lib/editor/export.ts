@@ -30,7 +30,7 @@ export interface ExportOptions {
 }
 
 export type ExportResult =
-  | { ok: true; file: string; format: "mp4" | "webm"; audio: "aac" | "opus" | "webm" | "off"; blob: Blob }
+  | { ok: true; file: string; format: "mp4" | "webm"; audio: "aac" | "opus" | "webm" | "off"; blob: Blob; aacMissing?: boolean }
   | { ok: false; cancelled: true };
 
 export async function exportVideo(
@@ -51,14 +51,23 @@ export async function exportVideo(
   const restore = playback.time;
   pause();
   try {
-    try {
-      const mp4 = await exportMp4(width, height, end, fileName, quality.bitrate, fps, withAudio, onProgress, isCancelled);
-      if (mp4 === "cancelled") return { ok: false, cancelled: true };
-      if (mp4) return { ok: true, file: mp4.file, format: "mp4", audio: mp4.audio, blob: mp4.blob };
-    } catch {
-      if (isCancelled()) return { ok: false, cancelled: true };
+    // MP4 solo con audio AAC (mp4a.40.2). Si no hay AAC, WebM con Opus de forma explícita.
+    let aacMissing = false;
+    for (const container of ["mp4", "webm"] as const) {
+      try {
+        const out = await exportMp4(width, height, end, fileName, quality.bitrate, fps, withAudio, onProgress, isCancelled, container);
+        if (out === "cancelled") return { ok: false, cancelled: true };
+        if (out === "no-aac") {
+          aacMissing = true;
+          continue;
+        }
+        if (out) return { ok: true, file: out.file, format: container, audio: out.audio, blob: out.blob, aacMissing };
+      } catch {
+        if (isCancelled()) return { ok: false, cancelled: true };
+      }
     }
-    return await exportRecorder(width, height, end, fileName, fps, withAudio, onProgress, isCancelled);
+    const rec = await exportRecorder(width, height, end, fileName, fps, withAudio, onProgress, isCancelled);
+    return rec.ok ? { ...rec, aacMissing: aacMissing || (withAudio && rec.format === "webm") } : rec;
   } finally {
     setFrameSink(null);
     if (playback.playing) pause();
@@ -78,19 +87,21 @@ async function exportMp4(
   withAudio: boolean,
   onProgress: (value: number) => void,
   isCancelled: () => boolean,
-): Promise<{ file: string; audio: "aac" | "opus" | "off"; blob: Blob } | "cancelled" | null> {
+  container: "mp4" | "webm" = "mp4",
+): Promise<{ file: string; audio: "aac" | "opus" | "off"; blob: Blob } | "cancelled" | "no-aac" | null> {
   if (typeof VideoEncoder === "undefined" || typeof AudioEncoder === "undefined") return null;
   onProgress(0.01);
   const loaded = await until(import("mediabunny"), 12000);
   if (loaded === "timeout") return null;
   const mediabunny = loaded;
   const videoCodec = await until(
-    mediabunny.getFirstEncodableVideoCodec(["avc"], { width, height, bitrate, frameRate: fps }),
+    mediabunny.getFirstEncodableVideoCodec(container === "mp4" ? ["avc"] : ["vp9", "vp8"], { width, height, bitrate, frameRate: fps }),
     8000,
   );
+  if (withAudio && container === "mp4") await ensureAac(mediabunny);
   const audioCodec = withAudio
     ? await until(
-        mediabunny.getFirstEncodableAudioCodec(["aac", "opus"], {
+        mediabunny.getFirstEncodableAudioCodec(container === "mp4" ? ["aac"] : ["opus"], {
           numberOfChannels: 2,
           sampleRate: AUDIO_RATE,
           bitrate: 128_000,
@@ -99,7 +110,7 @@ async function exportMp4(
       )
     : null;
   if (videoCodec === "timeout" || !videoCodec) return null;
-  if (withAudio && (audioCodec === "timeout" || !audioCodec)) return null;
+  if (withAudio && (audioCodec === "timeout" || !audioCodec)) return container === "mp4" ? "no-aac" : null;
 
   await mixer.resume();
   if (!mixer.ctx) return null;
@@ -113,7 +124,7 @@ async function exportMp4(
 
   const target = new mediabunny.BufferTarget();
   const output = new mediabunny.Output({
-    format: new mediabunny.Mp4OutputFormat({ fastStart: "in-memory" }),
+    format: container === "mp4" ? new mediabunny.Mp4OutputFormat({ fastStart: "in-memory" }) : new mediabunny.WebMOutputFormat(),
     target,
   });
   const video = new mediabunny.CanvasSource(canvas, {
@@ -173,8 +184,8 @@ async function exportMp4(
     }
     await output.finalize();
     if (!target.buffer) throw new Error("El MP4 salió vacío");
-    const file = fileName(name, "mp4");
-    const blob = new Blob([target.buffer], { type: "video/mp4" });
+    const file = fileName(name, container);
+    const blob = new Blob([target.buffer], { type: container === "mp4" ? "video/mp4" : "video/webm" });
     onProgress(1);
     return { file, audio: withAudio && audioCodec && audioCodec !== "timeout" ? (audioCodec === "aac" ? "aac" : "opus") : "off", blob };
   } catch (error) {
@@ -264,7 +275,6 @@ function recorderMime(withAudio: boolean) {
     ? [
         "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
         "video/mp4;codecs=avc1,mp4a.40.2",
-        "video/mp4",
         "video/webm;codecs=vp9,opus",
         "video/webm;codecs=vp8,opus",
         "video/webm",
@@ -315,4 +325,20 @@ export function openBlob(blob: Blob) {
   const opened = window.open(url, "_blank", "noopener");
   if (!opened) window.location.assign(url);
   return url;
+}
+
+let aacReady: Promise<void> | null = null;
+
+/** Si el navegador no codifica AAC (p. ej. Chrome en Linux, Firefox), registra el codificador AAC-LC en WASM. */
+function ensureAac(mediabunny: typeof import("mediabunny")) {
+  aacReady ??= (async () => {
+    try {
+      if (await mediabunny.canEncodeAudio("aac", { numberOfChannels: 2, sampleRate: AUDIO_RATE, bitrate: 128_000 })) return;
+      const { registerAacEncoder } = await import("@mediabunny/aac-encoder");
+      registerAacEncoder();
+    } catch {
+      /* sin AAC: exportVideo cae a WebM con Opus y avisa */
+    }
+  })();
+  return until(aacReady, 15000);
 }

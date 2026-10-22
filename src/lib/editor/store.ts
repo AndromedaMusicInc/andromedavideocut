@@ -160,7 +160,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   aspect: "9:16",
   clips: DEMO_CLIPS,
   assets: [],
-  time: 1.15,
+  time: 0,
   playing: false,
   pps: 68,
   snap: true,

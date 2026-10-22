@@ -1,7 +1,7 @@
 type Listener = () => void;
 
 export const playback = {
-  time: 1.15,
+  time: 0,
   playing: false,
   listeners: new Set<Listener>(),
   subscribe(fn: Listener) {

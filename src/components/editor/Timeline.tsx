@@ -232,7 +232,7 @@ export function Timeline() {
 
   return (
     <section data-timeline="" data-tracks={trackOrder.join(" ")} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-line bg-surface">
-      <div className="flex h-11 shrink-0 items-center gap-1 border-b border-line px-2">
+      <div data-toolbar="" className="flex h-11 shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap border-b border-line px-2 [scrollbar-width:thin]">
         <Tool icon={Scissors} label="Dividir" onClick={() => splitAt(playback.time)} />
         <button
           type="button"
@@ -473,10 +473,12 @@ function Tool({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex h-11 items-center gap-1 rounded-md px-2 text-sm text-fg hover:bg-raised disabled:text-faint"
+      title={label}
+      aria-label={label}
+      className="inline-flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm text-fg hover:bg-raised disabled:text-faint"
     >
-      <Icon className="size-4" />
-      <span className="hidden md:inline">{label}</span>
+      <Icon className="size-4 shrink-0" />
+      <span className="hidden whitespace-nowrap xl:inline">{label}</span>
     </button>
   );
 }

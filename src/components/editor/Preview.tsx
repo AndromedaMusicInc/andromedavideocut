@@ -7,7 +7,8 @@ import { isVideoTrack, paintOrder } from "@/lib/editor/tracks";
 import { BOT_Y, MID_Y, TOP_Y } from "@/lib/editor/align";
 import { ASPECTS, TEXT_FONTS, fontFace, type Clip } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
-import { Pause, SkipBack } from "lucide-react";
+import { Expand, Pause, Shrink, SkipBack } from "lucide-react";
+import { fullscreenElement, onFullscreenChange, toggleFullscreen } from "@/lib/fullscreen";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 function fitCanvas(canvas: HTMLCanvasElement, box: HTMLElement, aspectW: number, aspectH: number) {
@@ -44,6 +45,9 @@ export function Preview() {
   const [fault, setFault] = useState<string | null>(null);
   const [coach, setCoach] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const viewerRef = useRef<HTMLElement>(null);
+  const [viewerFs, setViewerFs] = useState(false);
+  useEffect(() => onFullscreenChange(() => setViewerFs(fullscreenElement() === viewerRef.current)), []);
   const faultRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -105,7 +109,7 @@ export function Preview() {
   }, []);
 
   return (
-    <section className="flex min-h-40 min-w-0 flex-1 flex-col bg-sunken" style={{ position: "relative" }}>
+    <section ref={viewerRef} data-viewer="" className="flex min-h-40 min-w-0 flex-1 flex-col bg-sunken" style={{ position: "relative" }}>
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={stageRef} className="absolute inset-0 flex items-center justify-center p-3">
           <div ref={hostRef} className="relative">
@@ -209,29 +213,16 @@ export function Preview() {
           El preview falló: {fault}
         </p>
       ) : null}
-      {coach && !coachOpen ? (
-        <button
-          type="button"
-          data-coach-chip=""
-          onClick={() => setCoachOpen(true)}
-          className="grid size-8 place-items-center rounded-full border border-line bg-raised text-sm font-semibold text-fg shadow-lg"
-          style={{ position: "absolute", top: 10, left: 10, zIndex: 30 }}
-          aria-label="Ver ayuda"
-          title="Ver ayuda"
-        >
-          ?
-        </button>
-      ) : null}
       {coach && coachOpen ? (
         <div
           data-coach=""
-          className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3 py-2 shadow-lg"
-          style={{ position: "absolute", top: 10, left: 10, maxWidth: 220, zIndex: 30, opacity: 0.96, fontSize: 12, lineHeight: 1.35 }}
+          className="flex shrink-0 items-start gap-2 rounded-md border border-line bg-raised px-3 py-2"
+          style={{ margin: "0 12px 8px", fontSize: 12, lineHeight: 1.35 }}
         >
           <p className="text-pretty text-fg">
             Sube tu video, pon la línea roja encima y pulsa Dividir (S). Arrastra hasta que agarre arriba, el centro o abajo. Luego la frase, un look y Exportar.
           </p>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <button type="button" className="h-8 rounded-md border border-line px-2 text-xs text-fg" onClick={() => setCoachOpen(false)}>
               Ocultar
             </button>
@@ -292,6 +283,34 @@ export function Preview() {
         >
           Zona
         </button>
+        <button
+          type="button"
+          data-viewer-fullscreen=""
+          onClick={() => {
+            const el = viewerRef.current;
+            if (!el) return;
+            void toggleFullscreen(el).then((r) => {
+              if (r === "blocked") useEditor.getState().tell("Aquí no se permite pantalla completa. Abrí AndromedaVideoCut en una pestaña nueva.");
+            });
+          }}
+          aria-label={viewerFs ? "Salir de pantalla completa" : "Visor en pantalla completa"}
+          title={viewerFs ? "Salir de pantalla completa" : "Visor en pantalla completa"}
+          className="grid size-9 shrink-0 place-items-center rounded-md text-fg hover:bg-raised"
+        >
+          {viewerFs ? <Shrink className="size-4" /> : <Expand className="size-4" />}
+        </button>
+        {coach && !coachOpen ? (
+        <button
+          type="button"
+          data-coach-chip=""
+          onClick={() => setCoachOpen(true)}
+          className="ml-1 grid size-8 shrink-0 place-items-center rounded-full border border-line bg-raised text-sm font-semibold text-fg"
+          aria-label="Ver ayuda"
+          title="Ver ayuda"
+        >
+          ?
+        </button>
+      ) : null}
       </div>
     </section>
   );
@@ -696,5 +715,5 @@ function Clock() {
     apply();
     return playback.subscribe(apply);
   }, []);
-  return <span ref={ref} className="min-w-14 text-sm font-medium text-fg tabular-nums">{formatTime(1.15)}</span>;
+  return <span ref={ref} className="min-w-14 text-sm font-medium text-fg tabular-nums">{formatTime(0)}</span>;
 }
