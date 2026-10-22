@@ -1,5 +1,5 @@
 import { loadFeed, openLink, type Feed, type FeedItem, type FeedOrigin } from "@/lib/andromeda/feed";
-import { createProject, deleteProject, duplicateProject, formatBytes, formatDate, formatDuration, listProjects, renameProject, restoreProject, trashProject, writeProject, type ProjectMeta } from "@/lib/editor/projects";
+import { createProject, deleteProject, duplicateProject, formatBytes, formatDate, formatDuration, listProjects, listProjectsFull, renameProject, restoreProject, trashProject, writeProject, type ProjectMeta } from "@/lib/editor/projects";
 import type { ToolId } from "@/lib/editor/types";
 import { ConnectGrokWizard, SettingsDialog, useAiBoot } from "@/components/editor/ConnectGrok";
 import { useAi } from "@/lib/ai/xai";
@@ -286,7 +286,7 @@ export function Welcome({ onOpen }: { onOpen: OpenFn }) {
   const feed = useFeed();
   const ai = useAi();
   useAiBoot();
-  const refresh = () => void listProjects().then(setProjects);
+  const refresh = () => void listProjects().then((l) => { setProjects(l); void listProjectsFull().then(setProjects); });
   useEffect(refresh, []);
   const desk = (window as unknown as { avcDesktop?: { checkUpdates?: () => Promise<void> } }).avcDesktop;
   const quick = async (template: "vacio" | "ejemplo", tool: ToolId, name: string) => onOpen(await createProject(name, "9:16", template), tool);

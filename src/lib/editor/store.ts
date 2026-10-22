@@ -1189,7 +1189,7 @@ if (typeof window !== "undefined") {
   (window as unknown as { __avcClips?: () => unknown }).__avcClips = () => useEditor.getState().clips.map((c) => ({ id: c.id, type: c.type, trackId: c.trackId, assetId: c.assetId, filter: c.filter, effect: c.effect, start: c.start, duration: c.duration }));
 }
 if (typeof window !== "undefined") {
-  (window as unknown as { __avcAssets?: () => unknown }).__avcAssets = () => useEditor.getState().assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, duration: a.duration, thumb: Boolean(a.thumb), status: (a as { status?: string }).status, error: (a as { error?: string }).error }));
+  (window as unknown as { __avcAssets?: () => unknown }).__avcAssets = () => useEditor.getState().assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, duration: a.duration, thumb: Boolean(a.thumb), status: (a as { status?: string }).status, error: a.error, waveform: Boolean(a.waveform), audioOk: a.audioOk, audioError: a.audioError, codec: a.codec, proxy: a.proxy }));
 }
 if (typeof window !== "undefined") (window as unknown as { __avcBusy?: () => unknown }).__avcBusy = () => useEditor.getState().busy;
 

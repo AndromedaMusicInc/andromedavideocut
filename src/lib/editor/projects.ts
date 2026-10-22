@@ -67,6 +67,38 @@ export async function listProjects(): Promise<ProjectMeta[]> {
   return [...list].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/**
+ * 0.0.3 (QA): la tarjeta de inicio decía "0.0K | 00:00" sin miniatura aunque el proyecto tuviera clips, porque los
+ * metadatos se guardaban sin tamaño/duración (guardado rápido al salir) o antes de que el visor dibujara. Aquí se
+ * calculan de los datos reales: duración = fin del último clip, tamaño = archivos importados + proyecto,
+ * miniatura = la del primer clip de video/imagen (o la del primer medio).
+ */
+export async function enrichMeta(meta: ProjectMeta): Promise<ProjectMeta> {
+  if (meta.bytes && meta.duration && meta.thumb) return meta;
+  const data = await readProject(meta.id).catch(() => null);
+  if (!data) return meta;
+  const clips = data.clips ?? [];
+  const duration = meta.duration || clips.reduce((m, c) => Math.max(m, (Number(c.start) || 0) + (Number(c.duration) || 0)), 0);
+  let bytes = meta.bytes || 0;
+  if (!bytes) {
+    bytes = JSON.stringify(clips).length;
+    for (const a of data.assets ?? []) bytes += (await idbGet(a.id).catch(() => undefined))?.size ?? 0;
+  }
+  let thumb = meta.thumb;
+  if (!thumb) {
+    const first = [...clips].filter((c) => (c.type === "video" || c.type === "image") && c.assetId).sort((a, b) => a.start - b.start)[0];
+    const byId = new Map((data.assets ?? []).map((a) => [a.id, a]));
+    thumb = (first && byId.get(first.assetId!)?.thumb) || (data.assets ?? []).find((a) => a.thumb)?.thumb;
+  }
+  const next = { ...meta, duration, bytes, thumb };
+  if (next.duration !== meta.duration || next.bytes !== meta.bytes || next.thumb !== meta.thumb) await writeProject(next, null).catch(() => false);
+  return next;
+}
+
+export async function listProjectsFull(): Promise<ProjectMeta[]> {
+  return Promise.all((await listProjects()).map((m) => enrichMeta(m)));
+}
+
 export async function readProject(id: string): Promise<SavedProject | null> {
   const d = desktop();
   if (d) return d.read(id);

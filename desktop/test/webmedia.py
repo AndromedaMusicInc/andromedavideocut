@@ -29,5 +29,12 @@ with sync_playwright() as p:
     ok(f"web {f}: o se ve o hay mensaje claro (nunca en blanco)",state!="EN BLANCO")
     if not added: ok(f"web {f}: el mensaje dice qué formato es y 'versión de PC'","no compatible" in err and ("versión de PC" in err or "NX Studio" in err))
   pg.screenshot(path="preview-shots/v0.0.3/web-medios.png")
+  # QA 0.0.2: la tarjeta del proyecto en Inicio debe mostrar tamaño, duración reales y miniatura del primer clip.
+  pg.wait_for_timeout(1500); pg.click("[aria-label='Volver al inicio']"); pg.wait_for_selector("[data-project]"); pg.wait_for_timeout(1500)
+  meta=pg.inner_text("[data-project] [data-project-meta]"); img=pg.locator("[data-project] img").count()
+  print("      tarjeta:",meta)
+  ok("inicio: tarjeta con tamaño y duración reales (no '0.0K | 00:00')","0.0K" not in meta and "00:00" not in meta,meta)
+  ok("inicio: tarjeta con miniatura",img>=1)
+  pg.screenshot(path="preview-shots/v0.0.3/web-inicio-tarjeta.png")
   ok("sin errores de página",not errs,errs); b.close()
 srv.kill(); print("RESULTADO",sum(R),"/",len(R)); sys.exit(0 if all(R) else 1)

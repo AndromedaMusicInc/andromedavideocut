@@ -53,9 +53,44 @@ function log(entry: Record<string, unknown>) {
  * Carga el audio del medio en el mezclador. `hasAudio` = false si sabemos que no trae pista de audio.
  * Devuelve "ok" | "convertido" | "sin-audio" | mensaje de error.
  */
+/** WAV/RF64/BWF: tamaño de datos que declara la cabecera (ds64 en RF64, de más de 4 GB). null si no es WAV. */
+export async function wavDeclaredBytes(blob: Blob): Promise<number | null> {
+  const head = new DataView(await blob.slice(0, 4096).arrayBuffer());
+  if (head.byteLength < 12) return null;
+  const tag = (o: number) => String.fromCharCode(head.getUint8(o), head.getUint8(o + 1), head.getUint8(o + 2), head.getUint8(o + 3));
+  const riff = tag(0);
+  if ((riff !== "RIFF" && riff !== "RF64" && riff !== "BW64") || tag(8) !== "WAVE") return null;
+  let o = 12;
+  let ds64: number | null = null;
+  while (o + 8 <= head.byteLength) {
+    const id = tag(o);
+    const size = head.getUint32(o + 4, true);
+    if (id === "ds64" && o + 24 <= head.byteLength) ds64 = Number(head.getBigUint64(o + 16, true));
+    if (id === "data") return size === 0xffffffff && ds64 !== null ? ds64 : size;
+    o += 8 + size + (size % 2);
+  }
+  return null;
+}
+
 export async function loadAssetAudio(asset: Asset, blob: Blob, hasAudio: boolean | undefined): Promise<string> {
   const st = useEditor.getState();
   if (asset.kind === "image" || hasAudio === false) return "sin-audio";
+  const declared = await wavDeclaredBytes(blob).catch(() => null);
+  if (declared !== null && declared > blob.size * 1.01 + 1024) {
+    const gb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`);
+    const msg = `Archivo incompleto: la cabecera WAV/RF64 dice ${gb(declared)} de audio pero el archivo pesa ${gb(blob.size)}. Se importa lo que hay; copia de nuevo el archivo completo.`;
+    log({ evento: "audio", id: asset.id, name: asset.name, resultado: "aviso", error: msg });
+    st.patchAsset(asset.id, { audioError: msg });
+    st.tell(`⚠ ${asset.name}: ${msg}`);
+    const r = await loadAssetAudioInner(asset, blob, hasAudio);
+    useEditor.getState().patchAsset(asset.id, { audioError: msg });
+    return r === "ok" || r === "convertido" ? msg : r;
+  }
+  return loadAssetAudioInner(asset, blob, hasAudio);
+}
+
+async function loadAssetAudioInner(asset: Asset, blob: Blob, hasAudio: boolean | undefined): Promise<string> {
+  const st = useEditor.getState();
   let buf: AudioBuffer | null = null;
   let how = "chromium";
   if (blob.size < MAX_DECODE) buf = await decode(await blob.arrayBuffer());

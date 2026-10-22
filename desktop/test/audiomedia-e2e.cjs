@@ -6,6 +6,7 @@ const fs = require("fs"); const path = require("path"); const { spawn, spawnSync
 const DIR = process.env.MEDIA_DIR || "/workspace/avc-testmedia/audios de prueba";
 const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY) : null;
 const SKIP = /1GB|R3D|NEV/;
+const HAS_PAREC = spawnSync("sh", ["-c", "command -v parec"]).status === 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function record(sec) {
   return new Promise((res) => {
@@ -47,7 +48,9 @@ const UD = "/workspace/avc-testmedia/ud-audiomedia"; fs.rmSync(UD, { recursive: 
       if (clip && row.buffer) {
         await w.evaluate((t) => window.__avcSeek(t), clip.start + 0.3); await sleep(300);
         await w.click("[aria-label='Reproducir']"); await sleep(300);
-        row.rms = Math.round((await record(1.2)) * 1000) / 1000;
+        // Con PulseAudio se graba la salida real; sin él, el nivel (analizador) del bus maestro que va a la tarjeta elegida.
+        if (HAS_PAREC) row.rms = Math.round((await record(1.2)) * 1000) / 1000;
+        else { let m = 0; for (let i = 0; i < 10; i++) { await sleep(100); m = Math.max(m, Number(await w.evaluate(() => window.__avcAudio.level())) || 0); } row.rms = Math.round(m * 1000) / 1000; row.how = "nivel"; }
         await w.click("[aria-label='Pausar']").catch(() => {});
       }
     }

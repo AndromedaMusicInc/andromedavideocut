@@ -22,6 +22,12 @@ import { ingestFile } from "@/lib/editor/import-media";
 import { useEffect, useRef, useState } from "react";
 
 /** Miniatura JPEG pequeña del visor para la pantalla de inicio. */
+/** Miniatura del primer clip de video/imagen (por si el visor aún no dibujó). */
+function firstThumb(state: { clips: { type: string; assetId?: string; start: number }[]; assets: { id: string; thumb?: string }[] }) {
+  const first = state.clips.filter((c) => (c.type === "video" || c.type === "image") && c.assetId).sort((a, b) => a.start - b.start)[0];
+  return (first && state.assets.find((a) => a.id === first.assetId)?.thumb) || undefined;
+}
+
 function snapshot(): string | undefined {
   const src = document.querySelector<HTMLCanvasElement>("[data-preview-canvas]");
   if (!src || !src.width) return undefined;
@@ -170,7 +176,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         window.clearTimeout(timer);
         const state = useEditor.getState();
         if (!state.hydrated) return;
-        metaRef.current = { ...metaRef.current, name: state.name, aspect: state.aspect, updatedAt: Date.now(), duration: contentEnd(state.clips) };
+        metaRef.current = { ...metaRef.current, name: state.name, aspect: state.aspect, updatedAt: Date.now(), duration: contentEnd(state.clips), thumb: metaRef.current.thumb || firstThumb(state) };
         void writeProject(metaRef.current, payload(state)).then(reportSave);
       };
       const save = async () => {
@@ -180,7 +186,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         const now = Date.now();
         let thumb = metaRef.current.thumb;
         if (now - lastThumb > 3000 || !thumb) {
-          thumb = snapshot() ?? thumb;
+          thumb = snapshot() ?? thumb ?? firstThumb(state);
           lastThumb = now;
         }
         let bytes = 0;
