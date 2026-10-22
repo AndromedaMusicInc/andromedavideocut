@@ -11,7 +11,9 @@ import { useEditor } from "@/lib/editor/store";
 import { ASPECTS, type AspectId, type Asset } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
 import { fullscreenElement, onFullscreenChange, toggleFullscreen } from "@/lib/fullscreen";
-import { Download, LoaderCircle, Maximize, Minimize } from "lucide-react";
+import { Download, LoaderCircle, Maximize, Minimize, Settings } from "lucide-react";
+import { ConnectGrokWizard, SettingsDialog, useAiBoot } from "@/components/editor/ConnectGrok";
+import { useAi } from "@/lib/ai/xai";
 import { ingestFile } from "@/lib/editor/import-media";
 import { useEffect, useRef, useState } from "react";
 
@@ -57,6 +59,7 @@ export function Editor() {
   }
   const [withAudio, setWithAudio] = useState(true);
   const [over, setOver] = useState(false);
+  useAiBoot();
   const notice = useEditor((s) => s.notice);
   const cancel = useRef(false);
 
@@ -283,6 +286,16 @@ export function Editor() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          data-open-settings=""
+          onClick={() => useAi.getState().openSettings()}
+          aria-label="Ajustes"
+          title="Ajustes (IA opcional)"
+          className="grid size-11 shrink-0 place-items-center rounded-md border border-line bg-raised text-fg hover:bg-surface"
+        >
+          <Settings className="size-5" />
+        </button>
         <FullscreenButton />
         <button
           type="button"
@@ -318,6 +331,9 @@ export function Editor() {
         </div>
         <Timeline />
       </div>
+
+      <SettingsDialog />
+      <ConnectGrokWizard />
 
       {notice ? (
         <div className="pointer-events-none absolute top-16 left-1/2 z-40 w-[min(32rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-md border border-line bg-raised px-3 py-2 text-sm text-pretty text-fg shadow-lg">

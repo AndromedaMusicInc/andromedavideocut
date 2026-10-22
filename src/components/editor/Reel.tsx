@@ -1,6 +1,8 @@
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
 import { useEditor } from "@/lib/editor/store";
 import { transcribeTimeline } from "@/lib/editor/transcribe";
+import { useAi } from "@/lib/ai/xai";
+import { AiLock } from "@/components/editor/ConnectGrok";
 import type { LyricStyle } from "@/lib/editor/reel";
 import { cn } from "@/lib/cn";
 import { useState } from "react";
@@ -22,6 +24,7 @@ export function ReelPane() {
   const applyVega = useEditor((s) => s.applyVega);
   const buildReel = useEditor((s) => s.buildReel);
   const setBpm = useEditor((s) => s.setBpm);
+  const aiConnected = useAi((s) => s.connected);
   const [lyrics, setLyrics] = useState("");
   const [plan, setPlan] = useState("");
   const [style, setStyle] = useState<LyricStyle>("pie");
@@ -122,8 +125,12 @@ export function ReelPane() {
       <button type="button" onClick={() => setNote(dropLyrics(lyrics, style, 2))} className="h-11 rounded-md bg-raised text-sm text-fg">
         Poner letras
       </button>
+      {!aiConnected ? (
+        <AiLock feature="Transcribir voz (letra automática)" />
+      ) : (
       <button
         type="button"
+        data-ai-feature="transcribe"
         disabled={busy}
         onClick={() =>
           void run(async () => {
@@ -137,6 +144,7 @@ export function ReelPane() {
       >
         Transcribir voz
       </button>
+      )}
       <p className="text-xs text-muted">Lee hasta 90 segundos de tu canción y pone la letra en el beat. También puedes pegar un SRT.</p>
       <div>
         <h3 className="text-sm font-semibold text-fg">Plantillas</h3>

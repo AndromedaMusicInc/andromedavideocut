@@ -1,4 +1,5 @@
 import { mixer } from "@/lib/editor/audio";
+import { AiError, transcribeWav } from "@/lib/ai/xai";
 import { audioWindow, pickMusicClip, type LyricLine } from "@/lib/editor/reel";
 import { useEditor } from "@/lib/editor/store";
 import { encodeWav } from "@/lib/editor/wav";
@@ -54,10 +55,6 @@ export function readWords(payload: unknown): WordStamp[] {
   return out;
 }
 
-function apiUrl(path: string) {
-  const prefix = import.meta.env.VITE_API_BASE ?? "";
-  return `${prefix}${path}`;
-}
 
 export async function transcribeTimeline(): Promise<{ lines: LyricLine[]; lyrics: string; note: string }> {
   const state = useEditor.getState();
@@ -66,9 +63,6 @@ export async function transcribeTimeline(): Promise<{ lines: LyricLine[]; lyrics
   if (clip.generator && !clip.assetId) {
     return { lines: [], lyrics: "", note: "Eso es un sonido de la app. Suelta la canción para leer la voz." };
   }
-  if (!import.meta.env.VITE_API_BASE) {
-    return { lines: [], lyrics: "", note: "En la versión web la letra automática no está disponible. Pega la letra a mano (una frase por línea)." };
-  }
   await mixer.resume();
   const windowed = audioWindow(clip);
   if (!windowed || windowed.samples.length < windowed.rate * 0.4) {
@@ -76,14 +70,11 @@ export async function transcribeTimeline(): Promise<{ lines: LyricLine[]; lyrics
   }
   const capped = windowed.samples.length > windowed.rate * MAX_SECONDS;
   const wav = encodeWav(windowed.samples, windowed.rate, MAX_SECONDS);
-  const response = await fetch(apiUrl("/api/transcribe"), {
-    method: "POST",
-    headers: { "Content-Type": "audio/wav" },
-    body: wav,
-  });
-  const data = (await response.json().catch(() => null)) as { error?: string; text?: string; words?: unknown } | null;
-  if (!response.ok) {
-    return { lines: [], lyrics: "", note: data?.error || "No se pudo transcribir. Pega la letra a mano." };
+  let data: { text?: string; words?: unknown };
+  try {
+    data = await transcribeWav(wav instanceof ArrayBuffer ? wav : await new Blob([wav as BlobPart]).arrayBuffer());
+  } catch (err) {
+    return { lines: [], lyrics: "", note: err instanceof AiError ? err.message : "No se pudo transcribir. Pega la letra a mano." };
   }
   const speed = clip.speed || 1;
   const words = readWords(data).map((word) => ({

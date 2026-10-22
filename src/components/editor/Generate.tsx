@@ -1,7 +1,7 @@
 import { ingestFile } from "@/lib/editor/import-media";
 import { seek } from "@/lib/editor/engine";
-const STATIC_BUILD = !import.meta.env.VITE_API_BASE;
-import { getGrokKey, hasGrokKey, setGrokKey } from "@/lib/editor/grok-key";
+import { AiError, generateVideo, useAi } from "@/lib/ai/xai";
+import { AiLock } from "@/components/editor/ConnectGrok";
 import { STUDIO_PACKS } from "@/lib/editor/packs";
 import { useEditor } from "@/lib/editor/store";
 import { useState } from "react";
@@ -24,65 +24,22 @@ export function GeneratePane() {
   const [prompt, setPrompt] = useState(IDEAS[0] ?? "");
   const [note, setNote] = useState("Un toque arma 7 segundos. El video tarda cerca de un minuto.");
   const [busy, setBusy] = useState(false);
-  const [keyInput, setKeyInput] = useState("");
-  const [hasKey, setHasKey] = useState(hasGrokKey());
-
-  function saveKey() {
-    setGrokKey(keyInput);
-    setHasKey(hasGrokKey());
-    setKeyInput("");
-    setNote(hasGrokKey() ? "Clave guardada en este navegador." : "Pega tu clave de Grok para generar.");
-  }
+  const hasKey = useAi((s) => s.connected);
 
   async function generate() {
-    if (STATIC_BUILD) {
-      setNote("En la versión web (sin servidor) generar video con IA no está disponible todavía.");
-      return;
-    }
-    const key = getGrokKey();
-    if (!key) {
-      setNote("Pega tu clave de Grok arriba. Después cada persona usará la suya.");
-      return;
-    }
     setBusy(true);
     setNote("Generando 6 segundos. No cierres esta vista.");
     try {
-      const start = await fetch(`${import.meta.env.VITE_API_BASE ?? ""}/api/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-xai-key": key },
-        body: JSON.stringify({ prompt, aspect }),
-      });
-      const started = (await start.json()) as { requestId?: string; error?: string };
-      if (!start.ok || !started.requestId) throw new Error(started.error || "No se pudo empezar.");
-      const deadline = Date.now() + 180_000;
-      while (Date.now() < deadline) {
-        await sleep(4000);
-        const poll = await fetch(`${import.meta.env.VITE_API_BASE ?? ""}/api/generate?id=${encodeURIComponent(started.requestId)}`, {
-          headers: { "x-xai-key": key },
-        });
-        const body = (await poll.json()) as { status?: string; error?: string };
-        if (!poll.ok) throw new Error(body.error || "Falló la generación.");
-        if (body.status === "failed" || body.status === "expired") {
-          throw new Error(body.error || "No se pudo generar ese clip.");
-        }
-        if (body.status !== "done") continue;
-        const file = await fetch(`${import.meta.env.VITE_API_BASE ?? ""}/api/generate?id=${encodeURIComponent(started.requestId)}&file=1`, {
-          headers: { "x-xai-key": key },
-        });
-        if (!file.ok) throw new Error("El clip se hizo, pero no se pudo bajar.");
-        const blob = await file.blob();
-        const named = new File([blob], "clip-generado.mp4", { type: "video/mp4" });
-        const loaded = await ingestFile(named);
-        loaded.asset.name = "Clip generado";
-        await useEditor.getState().addAsset(loaded.asset, loaded.blob);
-        const placed = useEditor.getState().clips.find((clip) => clip.assetId === loaded.asset.id);
-        if (placed) seek(placed.start + 0.2);
-        setNote("Clip de 6 s en la línea, sin sonido. Ponle tu canción.");
-        return;
-      }
-      throw new Error("Tardó demasiado. Prueba otra frase.");
+      const blob = await generateVideo(prompt, aspect, setNote);
+      const named = new File([blob], "clip-generado.mp4", { type: "video/mp4" });
+      const loaded = await ingestFile(named);
+      loaded.asset.name = "Clip generado";
+      await useEditor.getState().addAsset(loaded.asset, loaded.blob);
+      const placed = useEditor.getState().clips.find((clip) => clip.assetId === loaded.asset.id);
+      if (placed) seek(placed.start + 0.2);
+      setNote("Clip de 6 s en la línea, sin sonido. Ponle tu canción.");
     } catch (err) {
-      setNote(err instanceof Error ? err.message : "No se pudo generar.");
+      setNote(err instanceof AiError ? err.message : "No se pudo generar.");
     } finally {
       setBusy(false);
     }
@@ -93,28 +50,6 @@ export function GeneratePane() {
       <div>
         <h2 className="text-sm font-semibold text-fg">Generador de clips</h2>
         <p className="mt-1 text-sm text-pretty text-muted">{note}</p>
-      </div>
-      <div className="rounded-md border border-line bg-sunken p-2">
-        <p className="text-xs text-muted">
-          {hasKey ? "Clave de Grok lista en este navegador." : "Pega tu clave de Grok para generar. Después cada persona usará la suya."}
-        </p>
-        <div className="mt-2 flex gap-2">
-          <input
-            type="password"
-            value={keyInput}
-            onChange={(event) => setKeyInput(event.target.value)}
-            placeholder={hasKey ? "Cambiar clave" : "xai-..."}
-            className="min-w-0 flex-1 rounded-md border border-line bg-raised px-2 py-1.5 text-sm text-fg"
-          />
-          <button
-            type="button"
-            onClick={saveKey}
-            disabled={!keyInput.trim()}
-            className="rounded-md bg-accent px-3 text-xs font-semibold text-accent-ink disabled:opacity-50"
-          >
-            Guardar
-          </button>
-        </div>
       </div>
       <label className="flex flex-col gap-1 text-xs text-muted">
         Frase del clip
@@ -144,6 +79,8 @@ export function GeneratePane() {
         <h3 className="text-sm font-semibold text-fg">Clip de video</h3>
         <p className="mt-1 text-xs text-muted">6 segundos, en el formato del proyecto, sin audio. Una generación por toque.</p>
       </div>
+      {!hasKey ? <AiLock feature="Generar video con IA" /> : null}
+      {hasKey ? (<>
       <div className="flex flex-col gap-1">
         {IDEAS.map((idea) => (
           <button
@@ -168,12 +105,14 @@ export function GeneratePane() {
       </label>
       <button
         type="button"
-        disabled={busy || !hasKey}
+        data-ai-feature="generate"
+        disabled={busy}
         onClick={() => void generate()}
         className="h-11 rounded-md bg-accent text-sm font-semibold text-accent-ink disabled:opacity-60"
       >
-        {busy ? "Generando…" : hasKey ? "Generar y poner en la línea" : "Pega tu clave primero"}
+        {busy ? "Generando…" : "Generar y poner en la línea"}
       </button>
+      </>) : null}
     </div>
   );
 }
