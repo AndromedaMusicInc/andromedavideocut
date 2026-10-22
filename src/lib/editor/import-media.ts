@@ -89,6 +89,7 @@ export async function ingestFile(file: File): Promise<{ asset: Asset; blob: Blob
       duration: Math.max(0.3, duration),
       url,
       thumb,
+      path: (window as unknown as { avcDesktop?: { pathForFile?: (f: File) => string } }).avcDesktop?.pathForFile?.(file) || undefined,
     },
   };
 }

@@ -1,23 +1,45 @@
+import { ClipMenu } from "@/components/editor/ClipMenu";
 import { Inspector } from "@/components/editor/Inspector";
 import { Library, ToolTabs } from "@/components/editor/Library";
 import { Preview } from "@/components/editor/Preview";
 import { Timeline } from "@/components/editor/Timeline";
 import { mixer } from "@/lib/editor/audio";
-import { seek, togglePlay } from "@/lib/editor/engine";
+import { pause, seek, togglePlay } from "@/lib/editor/engine";
 import { EXPORT_PRESETS, exportVideo, FRAME_RATES, loadPreset, openBlob, outputSize, QUALITIES, saveBlob, savePreset, type FrameRate, type PresetId, type QualityId } from "@/lib/editor/export";
-import { idbGet, loadProject, saveProject } from "@/lib/editor/persist";
+import { idbGet } from "@/lib/editor/persist";
+import { readProject, writeProject, type ProjectMeta } from "@/lib/editor/projects";
 import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
-import { ASPECTS, type AspectId, type Asset } from "@/lib/editor/types";
+import { ASPECTS, type AspectId, type Asset, type ToolId } from "@/lib/editor/types";
+import { contentEnd } from "@/lib/editor/time";
 import { cn } from "@/lib/cn";
 import { fullscreenElement, onFullscreenChange, toggleFullscreen } from "@/lib/fullscreen";
-import { Download, LoaderCircle, Maximize, Minimize, Settings } from "lucide-react";
+import { Download, House, LoaderCircle, Maximize, Minimize, Settings } from "lucide-react";
 import { ConnectGrokWizard, SettingsDialog, useAiBoot } from "@/components/editor/ConnectGrok";
 import { useAi } from "@/lib/ai/xai";
 import { ingestFile } from "@/lib/editor/import-media";
 import { useEffect, useRef, useState } from "react";
 
-export function Editor() {
+/** Miniatura JPEG pequeña del visor para la pantalla de inicio. */
+function snapshot(): string | undefined {
+  const src = document.querySelector<HTMLCanvasElement>("[data-preview-canvas]");
+  if (!src || !src.width) return undefined;
+  const w = 240;
+  const h = Math.round((src.height / src.width) * w);
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return undefined;
+  try {
+    ctx.drawImage(src, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.7);
+  } catch {
+    return undefined;
+  }
+}
+
+export function Editor({ project, onHome, tool: startTool }: { project: ProjectMeta; onHome: () => void; tool?: ToolId }) {
   const name = useEditor((s) => s.name);
   const setName = useEditor((s) => s.setName);
   const aspect = useEditor((s) => s.aspect);
@@ -36,6 +58,17 @@ export function Editor() {
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [exportFile, setExportFile] = useState<{ blob: Blob; name: string } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [onlyClips, setOnlyClips] = useState<string[] | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const ids = (e as CustomEvent<string[]>).detail;
+      setOnlyClips(ids);
+      setFileName(`${useEditor.getState().name} (selección)`);
+      setExportOpen(true);
+    };
+    window.addEventListener("avc:export-selection", on);
+    return () => window.removeEventListener("avc:export-selection", on);
+  }, []);
   const [fileName, setFileName] = useState("");
   const [quality, setQuality] = useState<QualityId>("1080");
   const [fps, setFps] = useState<FrameRate>(30);
@@ -63,11 +96,24 @@ export function Editor() {
   const notice = useEditor((s) => s.notice);
   const cancel = useRef(false);
 
+  const metaRef = useRef(project);
+  const saveNow = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
-    const saved = loadProject();
-    if (saved) {
-      useEditor.getState().loadSaved(saved);
-      void (async () => {
+    let alive = true;
+    let timer = 0;
+    let lastThumb = 0;
+    const sizes = new Map<string, number>();
+    let unsub = () => {};
+    pause();
+    seek(0);
+    useEditor.setState({ hydrated: false });
+    void (async () => {
+      const saved = await readProject(project.id);
+      if (!alive) return;
+      if (saved) useEditor.getState().loadSaved(saved);
+      else useEditor.getState().loadSaved({ v: 1, name: project.name, aspect: project.aspect, clips: [], muted: {}, assets: [] });
+      useEditor.setState({ hydrated: true, selectedId: null, ...(startTool ? { tool: startTool } : {}) });
+      if (saved?.assets.length) {
         const assets: Asset[] = [];
         for (const meta of saved.assets) {
           try {
@@ -77,21 +123,28 @@ export function Editor() {
             assets.push({ ...meta, url });
             if (meta.kind !== "image") mixer.queue(meta.id, await blob.arrayBuffer());
           } catch {
-            /* skip a missing blob */
+            /* falta un archivo: se omite */
           }
         }
-        if (assets.length) useEditor.getState().setAssets(assets);
-      })();
-    } else {
-      useEditor.setState({ hydrated: true });
-    }
-
-    let timer = 0;
-    const unsub = useEditor.subscribe((state) => {
-      if (!state.hydrated) return;
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        saveProject({
+        if (alive && assets.length) useEditor.getState().setAssets(assets);
+      }
+      const save = async () => {
+        const state = useEditor.getState();
+        if (!state.hydrated) return;
+        const now = Date.now();
+        let thumb = metaRef.current.thumb;
+        if (now - lastThumb > 3000 || !thumb) {
+          thumb = snapshot() ?? thumb;
+          lastThumb = now;
+        }
+        let bytes = 0;
+        for (const a of state.assets) {
+          if (!sizes.has(a.id)) sizes.set(a.id, (await idbGet(a.id).catch(() => undefined))?.size ?? 0);
+          bytes += sizes.get(a.id) ?? 0;
+        }
+        bytes += JSON.stringify(state.clips).length;
+        metaRef.current = { ...metaRef.current, name: state.name, aspect: state.aspect, thumb, updatedAt: now, bytes, duration: contentEnd(state.clips) };
+        await writeProject(metaRef.current, {
           v: 1,
           name: state.name,
           aspect: state.aspect,
@@ -101,15 +154,36 @@ export function Editor() {
           bpm: state.bpm,
           downbeat: state.downbeat,
           layers: state.layers,
+          fxCount: state.fxCount,
           assets: state.assets,
         });
-      }, 400);
-    });
+      };
+      saveNow.current = async () => {
+        window.clearTimeout(timer);
+        await save();
+      };
+      unsub = useEditor.subscribe((state, prev) => {
+        if (!state.hydrated) return;
+        // Solo cambios del proyecto (no el cabezal ni la reproducción).
+        if (state.clips === prev.clips && state.name === prev.name && state.aspect === prev.aspect && state.muted === prev.muted && state.assets === prev.assets && state.beats === prev.beats && state.layers === prev.layers) return;
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => void save(), 400);
+      });
+      // Primera miniatura cuando el visor ya dibujó.
+      window.setTimeout(() => alive && void save(), 1200);
+    })();
     return () => {
+      alive = false;
       unsub();
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [project.id]);
+
+  async function goHome() {
+    pause();
+    await saveNow.current();
+    onHome();
+  }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -119,6 +193,31 @@ export function Editor() {
         event.preventDefault();
       }
       if (typing) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "x") {
+        event.preventDefault();
+        useEditor.getState().cutSelected();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        useEditor.getState().splitSelection();
+        return;
+      }
+      if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "v") {
+        useEditor.getState().toggleDisabled();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+        // Selecciona todos los clips (no el texto de la app).
+        event.preventDefault();
+        useEditor.getState().selectAll();
+        return;
+      }
+      if (event.key === "Escape") {
+        if (document.querySelector("[role=dialog]")) return;
+        useEditor.getState().clearSelection();
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo();
@@ -183,7 +282,7 @@ export function Editor() {
           }
         },
         () => cancel.current,
-        { fileName: fileName.trim() || name, quality, fps, audio: withAudio },
+        { fileName: fileName.trim() || name, quality, fps, audio: withAudio, clipIds: onlyClips ?? undefined },
       );
       savePreset({ preset, quality, fps });
       if (result.ok) {
@@ -207,7 +306,7 @@ export function Editor() {
 
   return (
     <div
-      className="relative flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-bg text-fg"
+      data-editor="" className="relative flex h-dvh min-h-0 w-full max-w-full select-none flex-col overflow-hidden bg-bg text-fg"
       onDragOver={(event) => {
         event.preventDefault();
         setOver(true);
@@ -237,6 +336,16 @@ export function Editor() {
     >
       <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            data-go-home=""
+            onClick={() => void goHome()}
+            title="Volver al inicio (proyectos)"
+            aria-label="Volver al inicio"
+            className="grid size-11 shrink-0 place-items-center rounded-md text-fg hover:bg-raised"
+          >
+            <House className="size-5" />
+          </button>
           <button
             type="button"
             onClick={() => void togglePlay()}
@@ -300,6 +409,7 @@ export function Editor() {
         <button
           type="button"
           onClick={() => {
+            setOnlyClips(null);
             setFileName(name);
             setExportOpen(true);
           }}
@@ -333,6 +443,7 @@ export function Editor() {
       </div>
 
       <SettingsDialog />
+      <ClipMenu />
       <ConnectGrokWizard />
 
       {notice ? (
@@ -350,7 +461,7 @@ export function Editor() {
       {exportOpen && !exporting ? (
         <div className="absolute inset-0 z-40 grid place-items-center bg-bg/75 p-4">
           <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-raised p-5">
-            <h2 id="export-title" className="text-base font-semibold">Exportar</h2>
+            <h2 id="export-title" className="text-base font-semibold">{onlyClips ? `Exportar ${onlyClips.length} clip${onlyClips.length > 1 ? "s" : ""} seleccionado${onlyClips.length > 1 ? "s" : ""}` : "Exportar"}</h2>
             <label className="mt-3 flex flex-col gap-1 text-xs text-muted">
               Nombre del archivo
               <input

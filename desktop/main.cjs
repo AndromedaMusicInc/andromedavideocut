@@ -1,7 +1,9 @@
 // AndromedaVideoCut para escritorio: ventana Electron que sirve el build estático
 // por un protocolo propio (app://), porque los módulos ES no cargan desde file://.
-const { app, BrowserWindow, shell, Menu, protocol, net, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, shell, Menu, protocol, net, dialog, ipcMain, screen } = require("electron");
 const { registerXaiIpc } = require("./xai-oauth.cjs");
+const { registerProjectsIpc } = require("./projects.cjs");
+const viewer = require("./viewer.cjs");
 const { setupUpdater } = require("./updater.cjs");
 const path = require("path");
 const { pathToFileURL } = require("url");
@@ -11,6 +13,97 @@ const ROOT = path.join(__dirname, "app");
 protocol.registerSchemesAsPrivileged([
   { scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, codeCache: true } },
 ]);
+
+const MIME = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".wasm": "application/wasm",
+  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".ico": "image/x-icon",
+  ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav", ".ogg": "audio/ogg", ".opus": "audio/ogg",
+  ".mp4": "video/mp4", ".webm": "video/webm", ".woff2": "font/woff2", ".woff": "font/woff", ".txt": "text/plain; charset=utf-8",
+};
+
+/** app:// con tipo MIME correcto y soporte de Range (206): <audio>/<video> lo necesitan para buscar y reproducir. */
+async function serveApp(request) {
+  const fs = require("fs");
+  const { Readable } = require("stream");
+  const { pathname } = new URL(request.url);
+  const file = path.normalize(path.join(ROOT, decodeURIComponent(pathname)));
+  if (!file.startsWith(ROOT + path.sep)) return new Response("Prohibido", { status: 403 });
+  let stat;
+  try {
+    stat = await fs.promises.stat(file);
+    if (!stat.isFile()) throw new Error("no es archivo");
+  } catch {
+    return new Response("No encontrado", { status: 404 });
+  }
+  const type = MIME[path.extname(file).toLowerCase()] || "application/octet-stream";
+  const base = { "Content-Type": type, "Accept-Ranges": "bytes", "Cache-Control": "no-cache" };
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") || "");
+  if (range && (range[1] || range[2])) {
+    let start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
+    let end = range[1] && range[2] ? Math.min(Number(range[2]), stat.size - 1) : stat.size - 1;
+    if (start >= stat.size || start > end) return new Response(null, { status: 416, headers: { ...base, "Content-Range": `bytes */${stat.size}` } });
+    const body = Readable.toWeb(fs.createReadStream(file, { start, end }));
+    return new Response(body, { status: 206, headers: { ...base, "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Content-Length": String(end - start + 1) } });
+  }
+  const body = request.method === "HEAD" ? null : Readable.toWeb(fs.createReadStream(file));
+  return new Response(body, { status: 200, headers: { ...base, "Content-Length": String(stat.size) } });
+}
+
+/** Permite elegir la salida de audio (setSinkId) y ver los nombres de los dispositivos, solo para app://. */
+function allowAudioDevices() {
+  const { session } = require("electron");
+  const ses = session.defaultSession;
+  const ours = (origin) => typeof origin === "string" && origin.startsWith("app://andromeda");
+  const OK = new Set(["speaker-selection", "media", "audioCapture"]);
+  ses.setPermissionCheckHandler((_wc, permission, origin, details) => {
+    if (!ours(origin || details?.requestingUrl)) return false;
+    if (permission === "media") return details?.mediaType !== "video";
+    return OK.has(permission);
+  });
+  ses.setPermissionRequestHandler((wc, permission, cb, details) => {
+    const url = details?.requestingUrl || wc.getURL();
+    if (!ours(url)) return cb(false);
+    if (permission === "media") return cb(!(details?.mediaTypes || []).includes("video"));
+    cb(OK.has(permission));
+  });
+  ses.setDevicePermissionHandler?.((details) => ours(details.origin) && details.deviceType !== "hid" && details.deviceType !== "usb" && details.deviceType !== "serial");
+}
+
+/** Muestra el estado del audio (para soporte) y permite copiarlo. */
+async function audioDiagnostics() {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (!win) return;
+  const js = `(async () => {
+    const a = window.__avcAudio ? window.__avcAudio.info() : { state: "sin-iniciar" };
+    let outs = [];
+    try { outs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audiooutput").map(d => d.label || d.deviceId.slice(0, 8)); } catch (e) { outs = ["error: " + e]; }
+    return { ...a, salidas: outs, sinkGuardado: localStorage.getItem("avc-audio-sink") || "predeterminado", userAgent: navigator.userAgent };
+  })()`;
+  let info;
+  try {
+    info = await win.webContents.executeJavaScript(js);
+  } catch (e) {
+    info = { error: String(e) };
+  }
+  const text = [
+    `Versión: ${app.getVersion()}  ·  Windows/SO: ${process.platform} ${require("os").release()}`,
+    `AudioContext: ${info.state}  ·  ${info.sampleRate || "?"} Hz  ·  sonando: ${info.active ?? 0}  ·  nivel: ${(info.level ?? 0).toFixed(3)}`,
+    `Salida elegida: ${info.sinkGuardado}`,
+    `Salidas disponibles: ${(info.salidas || []).join(" | ") || "ninguna"}`,
+    `Sonidos cargados: ${(info.buffers || []).length}`,
+    info.error ? `Último error: ${info.error}` : "",
+  ].filter(Boolean).join("\n");
+  const r = await dialog.showMessageBox(win, {
+    type: "info",
+    title: "Diagnóstico de audio",
+    message: "Diagnóstico de audio",
+    detail: `${text}\n\nPulsa Reproducir y vuelve a abrir este diagnóstico: “AudioContext: running” y nivel mayor que 0 indican que la app envía sonido.`,
+    buttons: ["Copiar", "Cerrar"],
+    defaultId: 1,
+  });
+  if (r.response === 0) require("electron").clipboard.writeText(text);
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -22,17 +115,49 @@ function createWindow() {
     backgroundColor: "#0c0c0e",
     icon: path.join(ROOT, "brand", "favicon-180.png"),
     autoHideMenuBar: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, "preload.cjs") },
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true,
+      preload: path.join(__dirname, "preload.cjs"),
+      // La vista previa debe sonar sin depender de la política de autoplay de Chromium.
+      autoplayPolicy: "no-user-gesture-required",
+      backgroundThrottling: false,
+    },
   });
   win.loadURL("app://andromeda/index.html");
   // Enlaces externos van al navegador del sistema; nada abre ventanas nuevas.
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url, frameName }) => {
+    // El visor separado es la única ventana propia permitida.
+    if (frameName === viewer.VIEWER_NAME && url === "about:blank") {
+      return { action: "allow", overrideBrowserWindowOptions: viewer.viewerOptions() };
+    }
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: "deny" };
+  });
+  win.webContents.on("did-create-window", (child, { frameName }) => {
+    if (frameName !== viewer.VIEWER_NAME) return;
+    viewer.track(child);
+    child.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+    child.webContents.on("will-navigate", (e) => e.preventDefault());
   });
 }
 
 let updates = null;
+
+function mainWin() {
+  return BrowserWindow.getAllWindows().find((w) => w !== viewer.current()) || null;
+}
+async function toggleViewer() {
+  const w = mainWin();
+  if (!w) return;
+  // userGesture=true: window.open necesita gesto del usuario.
+  await w.webContents.executeJavaScript("window.__avcViewer ? (window.__avcViewer.isOpen() ? (window.__avcViewer.close(), 'cerrado') : (window.__avcViewer.open() ? 'abierto' : 'falló')) : 'sin-editor'", true);
+}
+async function openViewerOn(displayId, fullscreen) {
+  viewer.moveToDisplay(displayId, fullscreen);
+  if (!viewer.current()) {
+    const w = mainWin();
+    if (w) await w.webContents.executeJavaScript("window.__avcViewer && window.__avcViewer.open()", true);
+  }
+}
 
 function buildMenu() {
   const template = [
@@ -44,6 +169,39 @@ function buildMenu() {
       label: "Ver",
       submenu: [
         { role: "togglefullscreen", label: "Pantalla completa" },
+        { type: "separator" },
+        { label: viewer.current() ? "Unir visor al editor" : "Separar visor", accelerator: "CmdOrCtrl+Shift+V", click: () => toggleViewer() },
+        {
+          label: "Visor en pantalla",
+          submenu: screen.getAllDisplays().map((d, i) => ({
+            label: `Pantalla ${i + 1}${d.id === screen.getPrimaryDisplay().id ? " (principal)" : ""} · ${d.size.width}×${d.size.height}`,
+            type: "radio",
+            checked: (viewer.load().displayId ?? screen.getPrimaryDisplay().id) === d.id,
+            click: () => openViewerOn(d.id, true),
+          })),
+        },
+        {
+          label: "Visor en pantalla completa",
+          enabled: Boolean(viewer.current()),
+          click: () => {
+            const v = viewer.current();
+            if (v) v.setFullScreen(!v.isFullScreen());
+          },
+        },
+        {
+          label: "Visor sin marco",
+          type: "checkbox",
+          checked: Boolean(viewer.load().frameless),
+          click: (item) => {
+            viewer.save({ frameless: item.checked });
+            // El marco solo se aplica al crear la ventana: se reabre si ya estaba separado.
+            if (viewer.current()) {
+              viewer.current().close();
+              setTimeout(() => toggleViewer(), 300);
+            }
+          },
+        },
+        { type: "separator" },
         { role: "resetZoom", label: "Tamaño real" },
         { role: "zoomIn", label: "Acercar" },
         { role: "zoomOut", label: "Alejar" },
@@ -53,6 +211,7 @@ function buildMenu() {
       label: "Ayuda",
       submenu: [
         { label: "Buscar actualizaciones…", click: () => updates?.check(true) },
+        { label: "Diagnóstico de audio…", click: () => audioDiagnostics() },
         { type: "separator" },
         { label: "Sitio de Andromeda Music Inc", click: () => shell.openExternal("https://andromedamusicinc.com") },
         {
@@ -104,13 +263,20 @@ app.whenReady().then(() => {
   });
   // AVC_TEST_BROWSER=1: las pruebas simulan el navegador visitando la URL sin abrir nada.
   registerXaiIpc(process.env.AVC_TEST_BROWSER ? { testBrowser: (u) => { require("./test/fake-browser.cjs")(u); } } : {});
-  protocol.handle("app", (request) => {
-    const { pathname } = new URL(request.url);
-    const file = path.normalize(path.join(ROOT, decodeURIComponent(pathname)));
-    if (!file.startsWith(ROOT)) return new Response("Prohibido", { status: 403 });
-    return net.fetch(pathToFileURL(file).toString());
+  protocol.handle("app", serveApp);
+  registerProjectsIpc();
+  ipcMain.handle("updates:check", () => updates?.check(true));
+  ipcMain.handle("file:show", (_e, p) => {
+    // Solo rutas absolutas de archivos que existen (las que el usuario importó).
+    if (typeof p !== "string" || !path.isAbsolute(p) || !require("fs").existsSync(p)) return false;
+    shell.showItemInFolder(p);
+    return true;
   });
+  allowAudioDevices();
   buildMenu();
+  viewer.setOnChange(() => buildMenu());
+  screen.on("display-added", () => buildMenu());
+  screen.on("display-removed", () => buildMenu());
   createWindow();
   initUpdates();
   if (process.env.AVC_SMOKE) {

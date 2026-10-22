@@ -86,6 +86,8 @@ export interface Clip {
   inPoint: number;
   speed: number;
   volume: number;
+  /** Desactivado (V): no se ve ni se oye, ni en la vista previa ni en la exportación. */
+  disabled?: boolean;
   opacity: number;
   filter: FilterId;
   effect: EffectId;
@@ -138,6 +140,8 @@ export interface Asset {
   url?: string;
   thumb?: string;
   waveform?: string;
+  /** Ruta del archivo original en el disco (solo app de escritorio). */
+  path?: string;
 }
 
 export interface TrackDef {
@@ -802,3 +806,8 @@ export const DEMO_CLIPS: Clip[] = [
     fadeOut: 0.7,
   }),
 ];
+
+/** Clips activos (sin los desactivados con V). */
+export function liveClips<T extends { disabled?: boolean }>(clips: T[]): T[] {
+  return clips.some((c) => c.disabled) ? clips.filter((c) => !c.disabled) : clips;
+}

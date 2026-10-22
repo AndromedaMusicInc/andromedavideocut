@@ -162,30 +162,135 @@ export function waveformUrl(id: string) {
 
 type Active = { clipId: string; gain: GainNode; stop: () => void };
 
+export const SINK_KEY = "avc-audio-sink";
+type SinkCtx = AudioContext & { setSinkId?: (id: string | { type: "none" }) => Promise<void>; sinkId?: string };
+
+export function savedSink() {
+  try {
+    return localStorage.getItem(SINK_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 export class Mixer {
   ctx: AudioContext | null = null;
   master: GainNode | null = null;
+  analyser: AnalyserNode | null = null;
   buffers = new Map<string, AudioBuffer>();
   pending = new Map<string, ArrayBuffer>();
   active: Active[] = [];
+  sinkId = "";
+  lastError = "";
+  /** Se llama cuando el contexto pasa a "running" (para reprogramar lo que sonaba). */
+  onRunning: (() => void) | null = null;
+  private levelBuf: Float32Array<ArrayBuffer> | null = null;
 
+  private create() {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    // "playback": búfer más grande, menos cortes en Windows.
+    this.ctx = new Ctx({ latencyHint: "playback" });
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 1;
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 1024;
+    this.master.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
+    this.ctx.addEventListener("statechange", () => {
+      if (this.ctx?.state === "running") this.onRunning?.();
+    });
+    this.sinkId = savedSink();
+    if (this.sinkId) void this.setSink(this.sinkId);
+  }
+
+  /** Crea y reanuda el contexto. Debe llamarse dentro de un gesto del usuario (clic o tecla). */
   async resume() {
     if (typeof window === "undefined") return;
-    if (!this.ctx) {
-      const Ctx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctx) return;
-      this.ctx = new Ctx();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 1;
-      this.master.connect(this.ctx.destination);
-    }
-    if (this.ctx.state === "suspended") {
-      await Promise.race([this.ctx.resume(), new Promise((resolve) => window.setTimeout(resolve, 1200))]);
+    if (!this.ctx) this.create();
+    if (!this.ctx) return;
+    if (this.ctx.state !== "running") {
+      try {
+        // Sin carrera con un temporizador: en Windows el primer arranque del dispositivo
+        // (WASAPI) puede tardar más de 1 s. Si aún no arranca, onRunning reprograma al iniciar.
+        await Promise.race([this.ctx.resume(), new Promise((resolve) => window.setTimeout(resolve, 4000))]);
+      } catch (e) {
+        this.lastError = String(e);
+      }
     }
     this.ensureGenerators();
     await this.decodePending();
+  }
+
+  /** Cambia la salida de audio ("" = predeterminado del sistema). */
+  async setSink(id: string) {
+    this.sinkId = id;
+    try {
+      localStorage.setItem(SINK_KEY, id);
+    } catch {
+      /* sin almacenamiento */
+    }
+    const ctx = this.ctx as SinkCtx | null;
+    if (!ctx?.setSinkId) return !id;
+    try {
+      await ctx.setSinkId(id);
+      this.lastError = "";
+      return true;
+    } catch (e) {
+      // El dispositivo ya no existe (auriculares desconectados): volver al predeterminado.
+      this.lastError = String(e);
+      try {
+        await ctx.setSinkId("");
+      } catch {
+        /* nada */
+      }
+      return false;
+    }
+  }
+
+  /** Nivel actual de la mezcla (0–1, RMS) para el vúmetro. */
+  level() {
+    if (!this.analyser) return 0;
+    if (!this.levelBuf || this.levelBuf.length !== this.analyser.fftSize) this.levelBuf = new Float32Array(this.analyser.fftSize);
+    this.analyser.getFloatTimeDomainData(this.levelBuf);
+    let sum = 0;
+    for (let i = 0; i < this.levelBuf.length; i += 1) sum += (this.levelBuf[i] ?? 0) ** 2;
+    return Math.sqrt(sum / this.levelBuf.length);
+  }
+
+  /** "Probar sonido": tono corto de 440 → 660 Hz por la salida elegida. */
+  async testTone() {
+    await this.resume();
+    if (!this.ctx || !this.master) return false;
+    const t = this.ctx.currentTime + 0.03;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, t);
+    osc.frequency.setValueAtTime(660, t + 0.35);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.35, t + 0.03);
+    g.gain.setValueAtTime(0.35, t + 0.62);
+    g.gain.linearRampToValueAtTime(0, t + 0.7);
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.72);
+    return this.ctx.state === "running";
+  }
+
+  info() {
+    return {
+      state: this.ctx?.state ?? "sin-crear",
+      sampleRate: this.ctx?.sampleRate ?? 0,
+      sinkId: this.sinkId,
+      buffers: [...this.buffers.keys()],
+      active: this.active.length,
+      level: this.level(),
+      error: this.lastError,
+    };
   }
 
   ensureGenerators() {
@@ -239,7 +344,7 @@ export class Mixer {
     if (!this.ctx || !this.master) return;
     const now = this.ctx.currentTime + 0.04;
     for (const clip of clips) {
-      if (muted[clip.trackId]) continue;
+      if (muted[clip.trackId] || clip.disabled) continue;
       const buffer = this.bufferFor(clip);
       if (!buffer) continue;
       const delay = clip.start - time;
@@ -289,3 +394,16 @@ export class Mixer {
 }
 
 export const mixer = new Mixer();
+
+if (typeof window !== "undefined") {
+  // Desbloqueo con el primer gesto en cualquier parte (Chromium/Electron arrancan el audio suspendido).
+  const unlock = () => {
+    void mixer.resume();
+    window.removeEventListener("pointerdown", unlock, true);
+    window.removeEventListener("keydown", unlock, true);
+  };
+  window.addEventListener("pointerdown", unlock, true);
+  window.addEventListener("keydown", unlock, true);
+  // Solo lectura, para diagnóstico y pruebas.
+  (window as unknown as { __avcAudio: unknown }).__avcAudio = { info: () => mixer.info(), level: () => mixer.level() };
+}

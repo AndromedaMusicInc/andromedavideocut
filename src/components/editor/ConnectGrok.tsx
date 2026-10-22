@@ -1,3 +1,4 @@
+import { LevelMeter, OutputSelect, TestSound } from "@/components/editor/AudioOutput";
 import {
   DESKTOP_ONLY_MSG,
   NO_SUB_MSG,
@@ -240,6 +241,15 @@ export function SettingsDialog() {
             <X className="size-4" />
           </button>
         </div>
+        <section data-audio-settings="" className="mt-3 flex flex-col gap-2 rounded-md border border-line bg-sunken p-3">
+          <OutputSelect />
+          <div className="flex items-center gap-3">
+            <TestSound />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted">
+            Nivel <LevelMeter className="w-32" />
+          </div>
+        </section>
         <section className="mt-3 rounded-md border border-line bg-sunken p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-fg">
             <Sparkles className="size-4 text-accent" /> IA (opcional)

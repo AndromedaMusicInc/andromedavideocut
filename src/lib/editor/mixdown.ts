@@ -1,3 +1,4 @@
+import { liveClips } from "@/lib/editor/types";
 import { mixer } from "@/lib/editor/audio";
 import { audioEnvelope } from "@/lib/editor/time";
 import type { Clip } from "@/lib/editor/types";
@@ -8,6 +9,7 @@ export function mixStereo(
   duration: number,
   sampleRate: number,
 ) {
+  clips = liveClips(clips);
   const length = Math.max(1, Math.ceil(Math.max(0, duration) * sampleRate));
   const left = new Float32Array(length);
   const right = new Float32Array(length);

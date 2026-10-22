@@ -59,6 +59,12 @@ export interface EditorState {
   pps: number;
   snap: boolean;
   selectedId: string | null;
+  /** Selección múltiple (Ctrl+A, Mayús/Ctrl+clic). Incluye selectedId cuando hay más de uno. */
+  selectedIds: string[];
+  selectAll: () => void;
+  clearSelection: () => void;
+  toggleSelect: (id: string) => void;
+  moveSelection: (ids: string[], origStarts: Record<string, number>, dx: number) => void;
   tool: ToolId;
   muted: Record<string, boolean>;
   beats: number[];
@@ -98,6 +104,14 @@ export interface EditorState {
   splitAt: (time: number) => string;
   duplicateSelected: () => void;
   copySelected: () => void;
+  /** Ids seleccionados (múltiple o el único). */
+  selection: () => string[];
+  cutSelected: () => void;
+  hasClipboard: () => boolean;
+  toggleDisabled: () => void;
+  splitSelection: () => void;
+  separateAudio: () => boolean;
+  replaceAsset: (clipId: string, asset: Asset) => void;
   pasteClipboard: () => void;
   deleteSelected: () => void;
   rippleDelete: () => void;
@@ -165,6 +179,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   pps: 68,
   snap: true,
   selectedId: "d-title",
+  selectedIds: [],
   tool: "reel",
   muted: {},
   beats: [],
@@ -188,7 +203,27 @@ export const useEditor = create<EditorState>((set, get) => ({
   setTool: (tool) => set({ tool }),
   setPps: (pps) => set({ pps: Math.min(180, Math.max(28, pps)) }),
   toggleSnap: () => set((s) => ({ snap: !s.snap })),
-  select: (selectedId) => set({ selectedId }),
+  select: (selectedId) => set({ selectedId, selectedIds: [] }),
+  selectAll: () => {
+    const ids = get().clips.map((clip) => clip.id);
+    set({ selectedIds: ids, selectedId: ids[0] ?? null });
+  },
+  clearSelection: () => set({ selectedId: null, selectedIds: [] }),
+  toggleSelect: (id) => {
+    const cur = new Set(get().selectedIds.length ? get().selectedIds : get().selectedId ? [get().selectedId!] : []);
+    if (cur.has(id)) cur.delete(id);
+    else cur.add(id);
+    const ids = [...cur];
+    set({ selectedIds: ids.length > 1 ? ids : [], selectedId: ids.includes(id) ? id : (ids[0] ?? null) });
+  },
+  moveSelection: (ids, origStarts, dx) => {
+    // Mueve el grupo en el tiempo conservando las distancias; nadie pasa de 0.
+    const min = Math.min(...ids.map((id) => origStarts[id] ?? 0));
+    const d = Math.max(-min, dx);
+    const set1 = new Set(ids);
+    const clips = get().clips.map((clip) => (set1.has(clip.id) ? { ...clip, start: (origStarts[clip.id] ?? clip.start) + d } : clip));
+    set({ clips });
+  },
   setName: (name) => set({ name: name.slice(0, 48) }),
   setAspect: (aspect) => {
     const before = snap(get());
@@ -412,25 +447,110 @@ export const useEditor = create<EditorState>((set, get) => ({
     const start = findSlot(get().clips, clip.trackId, clip.start + clip.duration, clip.duration);
     get().addClip({ ...clip, id: uid(), start });
   },
-  copySelected: () => {
-    const clip = get().clips.find((item) => item.id === get().selectedId);
-    if (!clip) return;
-    clipboard = { ...clip };
+  selection: () => {
+    const ids = get().selectedIds.length ? get().selectedIds : get().selectedId ? [get().selectedId!] : [];
+    const have = new Set(get().clips.map((c) => c.id));
+    return ids.filter((id) => have.has(id));
   },
+  copySelected: () => {
+    const ids = new Set(get().selection());
+    const picked = get().clips.filter((item) => ids.has(item.id));
+    if (!picked.length) return;
+    clipboard = picked.map((c) => ({ ...c }));
+  },
+  cutSelected: () => {
+    get().copySelected();
+    get().deleteSelected();
+  },
+  hasClipboard: () => Boolean(clipboard?.length),
   pasteClipboard: () => {
-    if (!clipboard) return;
-    const start = findSlot(get().clips, clipboard.trackId, playback.time, clipboard.duration);
-    get().addClip({ ...clipboard, id: uid(), start });
+    if (!clipboard?.length) return;
+    // Pega en el cabezal conservando las distancias entre clips.
+    const first = Math.min(...clipboard.map((c) => c.start));
+    const before = snap(get());
+    let clips = get().clips;
+    const added: string[] = [];
+    for (const c of clipboard) {
+      const want = playback.time + (c.start - first);
+      const start = findSlot(clips, c.trackId, want, c.duration);
+      const id = uid();
+      clips = [...clips, { ...c, id, start }];
+      added.push(id);
+    }
+    set({ clips, selectedId: added[0] ?? null, selectedIds: added.length > 1 ? added : [], past: [...get().past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
+  },
+  toggleDisabled: () => {
+    const ids = new Set(get().selection());
+    if (!ids.size) return;
+    const before = snap(get());
+    const anyOn = get().clips.some((c) => ids.has(c.id) && !c.disabled);
+    const clips = get().clips.map((c) => (ids.has(c.id) ? { ...c, disabled: anyOn ? true : undefined } : c));
+    set({ clips, past: [...get().past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
+  },
+  splitSelection: () => {
+    const ids = get().selection();
+    const t = playback.time;
+    if (ids.length <= 1) {
+      get().splitAt(t);
+      return;
+    }
+    const before = snap(get());
+    let clips = get().clips;
+    for (const id of ids) {
+      const c = clips.find((x) => x.id === id);
+      if (!c || t <= c.start + 0.05 || t >= c.start + c.duration - 0.05) continue;
+      const left = t - c.start;
+      clips = clips.flatMap((x) =>
+        x.id !== id ? [x] : [{ ...x, duration: left, fadeOut: 0 }, { ...x, id: uid(), start: t, duration: x.duration - left, inPoint: x.inPoint + left * (x.speed || 1), fadeIn: 0 }],
+      );
+    }
+    set({ clips, past: [...get().past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
+  },
+  separateAudio: () => {
+    const ids = new Set(get().selection());
+    const vids = get().clips.filter((c) => ids.has(c.id) && c.type === "video" && c.assetId && mixer.buffers.has(c.assetId) && c.volume > 0);
+    if (!vids.length) return false;
+    const before = snap(get());
+    let clips = get().clips;
+    let track = "a1";
+    for (const v of vids) {
+      let start = findSlot(clips, track, v.start, v.duration);
+      if (Math.abs(start - v.start) > 0.02) {
+        track = get().insertTrack(track, "after");
+        start = v.start;
+      }
+      const audio: Clip = { ...v, id: uid(), type: "audio", trackId: track, name: `${v.name} (audio)`, start, transition: "none" as Clip["transition"] };
+      clips = [...clips.map((c) => (c.id === v.id ? { ...c, volume: 0 } : c)), audio];
+    }
+    set({ clips, past: [...get().past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
+    return true;
+  },
+  replaceAsset: (clipId, asset) => {
+    const target = get().clips.find((c) => c.id === clipId);
+    if (!target) return;
+    const before = snap(get());
+    const type: Clip["type"] = asset.kind === "audio" ? "audio" : asset.kind === "image" ? "image" : "video";
+    const duration = asset.kind === "image" ? target.duration : Math.min(target.duration, Math.max(0.2, asset.duration || target.duration));
+    const clips = get().clips.map((c) => (c.id === clipId ? { ...c, assetId: asset.id, type, name: asset.name, inPoint: 0, duration } : c));
+    set({ clips, past: [...get().past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
   },
   deleteSelected: () => {
     const id = get().selectedId;
-    if (!id) return;
+    const many = new Set(get().selectedIds);
+    if (id) many.add(id);
+    if (!many.size) return;
     const before = snap(get());
-    const clips = get().clips.filter((clip) => clip.id !== id);
+    const clips = get().clips.filter((clip) => !many.has(clip.id));
     set({
       clips,
       trackOrder: pruneTracks(get().trackOrder, clips),
       selectedId: null,
+      selectedIds: [],
       past: [...get().past, before].slice(-60),
       future: [],
     });
@@ -712,7 +832,8 @@ export const useEditor = create<EditorState>((set, get) => ({
     set({
       name: saved.name || "Sin título",
       aspect: saved.aspect || "9:16",
-      clips: saved.clips ?? [],
+      // Completa campos que falten (proyectos viejos o editados a mano) para que nada se rompa.
+      clips: (saved.clips ?? []).filter((c) => c && c.id && c.type).map((c) => makeClip({ ...c, name: c.name ?? "Clip", start: Number(c.start) || 0, duration: Number(c.duration) || 1 })),
       muted: saved.muted ?? {},
       assets: (saved.assets ?? []).map((asset) => ({ ...asset })),
       beats: saved.beats ?? [],
@@ -723,6 +844,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       past: [],
       future: [],
       selectedId: null,
+      selectedIds: [],
     });
   },
   setAssets: (assets) => set({ assets }),
@@ -1057,5 +1179,5 @@ export function limitDuration(clip: Clip, duration: number, assets: Asset[]) {
 
 export { contentEnd };
 
-let clipboard: Clip | null = null;
+let clipboard: Clip[] | null = null;
 let styleClipboard: Partial<Clip> | null = null;

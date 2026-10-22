@@ -1,0 +1,310 @@
+[
+ {
+  "page": "yuriexx",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/0lGhCmzHoridusZB45L2o6",
+  "title": "Yuriexx",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616100005174c87bac3d82db901e0875e0b8",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "leroy-cuántico",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/49LQBqNasO5iBI33NnJS6R",
+  "title": "Leroy Cuantico",
+  "image": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e025ecbdadbb93a35777462720e",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "j-obcy",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/4UBudDUNjY63mX7zu2yPI4",
+  "title": "J. Obcy",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab676161000051740e90d86b6346c17612541ac9",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "yamilo-clemente",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/4yvUkeaXdv1lYqBX4gSyVZ",
+  "title": "Yamilo Clemente",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616100005174f3a0f9bbb83b0f250e6f3b49",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "riczeus",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/6XxYxb5l6WCu6qdgrc1TNe",
+  "title": "Riczeus",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616100005174f7cbc0862788a0af51d37a86",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "sesión-21",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/7aby2rQaaHlEXKInHcWney",
+  "title": "sesion 21",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616100005174f7ebed437a07fb4b952f29dd",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "xinex",
+  "type": "artist",
+  "url": "https://open.spotify.com/artist/7oPpWwM5XzDjNLRFY0U7xu",
+  "title": "Xinex",
+  "image": "https://image-cdn-ak.spotifycdn.com/image/ab67616100005174156ac74cad451fa20cd02183",
+  "date": null,
+  "desc": null
+ },
+ {
+  "page": "amsite",
+  "type": "playlist",
+  "url": "https://open.spotify.com/playlist/0KjoDiK3rff3BV0h4fKxbA",
+  "title": "Andromeda",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84a62636b53041d4565ca59b82",
+  "date": null,
+  "desc": null,
+  "artist": "Andromeda",
+  "n": 100
+ },
+ {
+  "page": "ǝve-studios",
+  "type": "playlist",
+  "url": "https://open.spotify.com/playlist/14a9zy5wAbJrV5LL44oaV3",
+  "title": "EVE Studios",
+  "image": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84a2b3a7d63e5ff5dafc7e05b7",
+  "date": null,
+  "desc": null,
+  "artist": "Andromeda",
+  "n": 70
+ },
+ {
+  "page": "sesión-21",
+  "type": "track",
+  "url": "https://open.spotify.com/track/0EddbRPfE430aeI6K7jS0j",
+  "title": "Pelvis Y Barriga",
+  "image": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e02e2ca741291258b49c4ddb5ab",
+  "date": "2023-03-24",
+  "desc": null,
+  "artist": "sesion 21, John Eric, Yamilo Clemente, Xinex",
+  "n": 0
+ },
+ {
+  "page": "riczeus",
+  "type": "track",
+  "url": "https://open.spotify.com/track/0vrxfKvRE5PSTdPva37Nj0",
+  "title": "Te Extraño",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02232c5540bf792e7df77c1ed9",
+  "date": "2025-02-26",
+  "desc": null,
+  "artist": "Riczeus, BebyBo7",
+  "n": 0
+ },
+ {
+  "page": "sesión-21",
+  "type": "track",
+  "url": "https://open.spotify.com/track/1k8Wk8scQbZUaJdnT97tW3",
+  "title": "La Marea",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02f287f04428f2e3ec0720cde5",
+  "date": "2023-02-03",
+  "desc": null,
+  "artist": "sesion 21, Maicol Superstar, Yamilo Clemente, Xinex",
+  "n": 0
+ },
+ {
+  "page": "yuriexx",
+  "type": "track",
+  "url": "https://open.spotify.com/track/1xjDGT89kiue6ywzj2ouL8",
+  "title": "WarZone",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e026149c1b5051c77646abdf805",
+  "date": "2026-06-07",
+  "desc": null,
+  "artist": "Yuriexx, Los Andromedas, Xinex, Riczeus",
+  "n": 0
+ },
+ {
+  "page": "yuriexx",
+  "type": "track",
+  "url": "https://open.spotify.com/track/39R6FJqXxspr2IaQ8r02S1",
+  "title": "Fvck Love",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e0268bdb2fe2f79bbd351dc8d9d",
+  "date": "2025-08-26",
+  "desc": null,
+  "artist": "Yuriexx, Carlitos Rossy",
+  "n": 0
+ },
+ {
+  "page": "sesión-21",
+  "type": "track",
+  "url": "https://open.spotify.com/track/4vguA9CmToC0GswlqRPGpd",
+  "title": "Lo Mio Es Amor",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e029a6a5ef133e345a95c44ea17",
+  "date": "2023-12-01",
+  "desc": null,
+  "artist": "sesion 21, Dandyel, Yamilo Clemente, Xinex",
+  "n": 0
+ },
+ {
+  "page": "yamilo-clemente",
+  "type": "track",
+  "url": "https://open.spotify.com/track/5saJ2gH9j5o9EOL1s5n2oW",
+  "title": "NGC 224",
+  "image": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e0210303e8f59a8795c5d2cef02",
+  "date": "2025-05-29",
+  "desc": null,
+  "artist": "Yamilo Clemente, Xinex",
+  "n": 0
+ },
+ {
+  "page": "yamilo-clemente",
+  "type": "track",
+  "url": "https://open.spotify.com/track/5uvnlFtKNLavL30lmjTNQD",
+  "title": "Clementosky",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e020f5763678c33d9c15dd34c95",
+  "date": "2025-04-03",
+  "desc": null,
+  "artist": "Yamilo Clemente, Xinex",
+  "n": 0
+ },
+ {
+  "page": "yuriexx",
+  "type": "track",
+  "url": "https://open.spotify.com/track/62N7zdhSuKivAIPyWeh06r",
+  "title": "Deseo",
+  "image": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e0257033cf4b6c636fde372d081",
+  "date": "2025-03-21",
+  "desc": null,
+  "artist": "Yuriexx",
+  "n": 0
+ },
+ {
+  "page": "riczeus",
+  "type": "track",
+  "url": "https://open.spotify.com/track/6lyxL6gwfUFlrEABjuxIou",
+  "title": "Neutro",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e023f3d93fd0936d46bf0274a84",
+  "date": "2023-01-20",
+  "desc": null,
+  "artist": "Xinex, Riczeus",
+  "n": 0
+ },
+ {
+  "page": "riczeus",
+  "type": "track",
+  "url": "https://open.spotify.com/track/6o7peFFP2zNTP4swVcVNY5",
+  "title": "Apagón - EVE Version",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02103ac06cce93efd7a46eb2d5",
+  "date": "2019-09-07",
+  "desc": null,
+  "artist": "Riczeus, BebyBo7, J. Obcy, Yamilo Clemente, Zayas TLM, Dro XL Equis Ele",
+  "n": 0
+ },
+ {
+  "page": "sesión-21",
+  "type": "track",
+  "url": "https://open.spotify.com/track/7bOQAwEe1405NTfBOjJVae",
+  "title": "Tambor",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02a3ab1b70acfc82ac8855d782",
+  "date": "2023-08-18",
+  "desc": null,
+  "artist": "sesion 21, Chris B, Yamilo Clemente, Xinex",
+  "n": 0
+ },
+ {
+  "page": "yamilo-clemente",
+  "type": "track",
+  "url": "https://open.spotify.com/track/7mwfEgm2BupTzaBDqoO8UB",
+  "title": "El Tintero",
+  "image": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02a80f2694a2804d74662bb6cb",
+  "date": "2025-08-16",
+  "desc": null,
+  "artist": "Yamilo Clemente, Vigo Wawa, Xinex",
+  "n": 0
+ },
+ {
+  "page": "leroy-cuántico",
+  "type": "video",
+  "id": "0ZLTEJW1t-c",
+  "url": "https://www.youtube.com/watch?v=0ZLTEJW1t-c",
+  "title": "Leroy Cuantico - R-Sport (prod. Maniako La Epidemia)",
+  "artist": "Leroy Cuantico ",
+  "image": "https://i.ytimg.com/vi/0ZLTEJW1t-c/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "sesión-21",
+  "type": "video",
+  "id": "1-v5ymlRiUU",
+  "url": "https://www.youtube.com/watch?v=1-v5ymlRiUU",
+  "title": "Sesión 21 - Pelvis Y Barriga ft. John Eric, Yamilo Clemente, Xinex",
+  "artist": "Sesion21VEVO",
+  "image": "https://i.ytimg.com/vi/1-v5ymlRiUU/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "ǝve-studios",
+  "type": "video",
+  "id": "A0IFi2S0068",
+  "url": "https://www.youtube.com/watch?v=A0IFi2S0068",
+  "title": "ParaNormaL - Riczeus x @XinexBeats",
+  "artist": "Riczeus",
+  "image": "https://i.ytimg.com/vi/A0IFi2S0068/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "sesión-21",
+  "type": "video",
+  "id": "D6lzATQpn4M",
+  "url": "https://www.youtube.com/watch?v=D6lzATQpn4M",
+  "title": "Dandyel - Lo Mio Es Amor Sesion 21 ( prod.by @Yamiloclemente & @XinexBeats)",
+  "artist": "21studio",
+  "image": "https://i.ytimg.com/vi/D6lzATQpn4M/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "sesión-21",
+  "type": "video",
+  "id": "eCTdK0n9Rfc",
+  "url": "https://www.youtube.com/watch?v=eCTdK0n9Rfc",
+  "title": "Tambor (feat. Chris B, Yamilo Clemente & Xinex)",
+  "artist": "sesion 21 - Topic",
+  "image": "https://i.ytimg.com/vi/eCTdK0n9Rfc/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "ǝve-studios",
+  "type": "video",
+  "id": "gFvJAKcApWM",
+  "url": "https://www.youtube.com/watch?v=gFvJAKcApWM",
+  "title": "Yuriexx (Los Andromedas) - Warzone",
+  "artist": "Yuriexx",
+  "image": "https://i.ytimg.com/vi/gFvJAKcApWM/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "j-obcy",
+  "type": "video",
+  "id": "k58ntp4-zr4",
+  "url": "https://www.youtube.com/watch?v=k58ntp4-zr4",
+  "title": "Fragmentos (Lo-Fi Version)",
+  "artist": "J. Obcy",
+  "image": "https://i.ytimg.com/vi/k58ntp4-zr4/hqdefault.jpg",
+  "date": null
+ },
+ {
+  "page": "sesión-21",
+  "type": "video",
+  "id": "xs9z-sEdvOo",
+  "url": "https://www.youtube.com/watch?v=xs9z-sEdvOo",
+  "title": "Maicol Superstar - La Marea Sesion 21 ( Prod. by Yamilo Clemente Y Xinex)",
+  "artist": "21studio",
+  "image": "https://i.ytimg.com/vi/xs9z-sEdvOo/hqdefault.jpg",
+  "date": null
+ }
+]

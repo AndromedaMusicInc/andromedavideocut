@@ -60,3 +60,4 @@
     transition-duration: 0.01ms !important;
   }
 }
+[data-editor] input, [data-editor] textarea, [data-editor] [contenteditable] { user-select: text; }

@@ -1,7 +1,7 @@
 {
   "name": "andromedavideocut-desktop",
   "productName": "AndromedaVideoCut",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AndromedaVideoCut — editor de video de Andromeda Music Inc. para escritorio",
   "author": {
     "name": "Andromeda Music Inc",
@@ -28,6 +28,8 @@
     "files": [
       "main.cjs",
       "updater.cjs",
+      "viewer.cjs",
+      "projects.cjs",
       "xai-oauth.cjs",
       "preload.cjs",
       "app/**/*",

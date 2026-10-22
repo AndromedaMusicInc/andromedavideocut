@@ -25,6 +25,9 @@ Salida en `desktop/dist/`:
 **Los tres** deben subirse al Release. Si falta `latest.yml`, las apps instaladas no ven la actualización.
 
 ### Verificaciones antes de publicar
+- `cd desktop && xvfb-run -a node test/v101-e2e.cjs` (Electron: proyectos, inicio, feed, audio, selección, menú
+  contextual, visor separado) y `xvfb-run -a node test/audio-e2e.cjs` (graba la salida con PulseAudio).
+- `python3 desktop/test/web101.py` desde la raíz del repo (versión web, headless).
 - `node test/oauth-e2e.cjs` (con `xvfb-run -a` en Linux): IA bloqueada sin sesión, 403, éxito, código, desconectar.
 - Prueba del updater (simula 1.0.0 → versión nueva contra un servidor local):
   ```bash
@@ -53,6 +56,19 @@ gh release create vX.Y.Z desktop/dist/release-X.Y.Z/* --repo AndromedaMusicInc/a
   --title "AndromedaVideoCut X.Y.Z" --notes-file <(sed -n '/## \[X.Y.Z\]/,/## \[/p' desktop/CHANGELOG.md)
 ```
 No marques el release como *pre-release*: electron-updater (canal `latest`) lo ignoraría.
+
+## 3b. Actualizar "Lo nuevo de Andromeda" (feed)
+La pantalla de inicio lee `https://andromedamusicinc.github.io/andromedavideocut/feed/andromeda-feed.json`, guarda una
+copia (caché) y, si no hay internet ni caché, usa la copia empaquetada `public/feed/andromeda-feed.json`.
+Solo contenido real de Andromeda Music Inc; no inventar lanzamientos.
+
+1. Edita `scripts/feed/fuente-cruda.json` con los lanzamientos, playlists, videos y noticias nuevos
+   (enlaces https de Spotify, YouTube o del sitio oficial).
+2. Genera el feed: `python3 scripts/feed/build-feed.py` (o `--offline` para no consultar los sitios).
+   Escribe `public/feed/andromeda-feed.json`.
+3. Copia ese archivo a la rama `gh-pages` como `feed/andromeda-feed.json` y haz commit.
+4. Publicar `gh-pages` (push) necesita el OK de Wilhelm. Las apps instaladas lo verán al abrir la pantalla de inicio.
+5. El próximo instalador llevará la copia empaquetada nueva.
 
 ## 4. Firma de código (futuro)
 Hoy el instalador **no está firmado** (por decisión: no se firma sin certificado propio de Andromeda Music Inc).

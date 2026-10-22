@@ -21,11 +21,25 @@ El instalador crea accesos directos en el escritorio y en el menú Inicio (carpe
 No necesita permisos de administrador: se instala solo para tu usuario.
 
 ## Primeros pasos
-- Se abre el proyecto de ejemplo **Mi primer reel**. Pulsa el botón de reproducir para verlo.
-- Arrastra tus videos, fotos o música a la ventana.
-- Atajos: **S** corta, **Supr** borra, **Ctrl+Z** deshace, **Espacio** reproduce o pausa.
+- Al abrir verás la **pantalla de inicio**: el botón **Crear proyecto**, accesos rápidos (Plantillas, Modo Tempo/BPM,
+  Karaoke/Letras, Importar medios, IA con Grok), **Lo nuevo de Andromeda** (lanzamientos y playlists reales) y tus proyectos.
+- En tus proyectos puedes buscar, cambiar entre cuadrícula y lista, renombrar, duplicar y mandar a la **Papelera**
+  (desde ahí se recuperan o se borran para siempre). Si venías de la 1.0.0, tu proyecto se conserva y aparece en la lista.
+- Arrastra tus videos, fotos o música a la ventana. El botón con la casita vuelve al inicio; todo se guarda solo.
+- Atajos: **S** o **Ctrl+B** corta, **Supr** borra, **Ctrl+Z** deshace, **Espacio** reproduce o pausa,
+  **Ctrl+A** selecciona todos los clips, **Esc** quita la selección, **Ctrl+C / Ctrl+X / Ctrl+V** copian, cortan y pegan,
+  **V** desactiva o activa el clip. Clic derecho en un clip abre el menú con todas las acciones.
+- **Separar visor** (o **Ver → Separar visor**, Ctrl+Shift+V) abre el visor en su propia ventana para llevarlo a otra
+  pantalla o ponerlo en pantalla completa. Al cerrarla vuelve al editor; el sonido sigue saliendo del editor.
 - Elige el formato arriba: 9:16 Reels, 16:9 YouTube, 1:1 Post o 4:5 Feed.
 - Pulsa **Exportar**, elige un preset (Reel/TikTok, Shorts 60, YouTube 1080p, Feed…) y guarda el MP4.
+
+## Si no escuchas la vista previa
+1. Pulsa **Probar sonido** (junto al visor). Debes oír un tono corto y ver moverse el vúmetro.
+2. Si el vúmetro se mueve pero no oyes nada, elige tu altavoz o audífonos en **Salida de audio**
+   (también en Ajustes). La app recuerda tu elección.
+3. Revisa el volumen de Windows y el mezclador de volumen de la app.
+4. Si sigue sin sonar, abre **Ayuda → Diagnóstico de audio…**, pulsa **Copiar** y envíanos el texto.
 
 ## Cómo conectar Grok (IA opcional)
 La IA (**Transcribir voz** para la letra automática y **Generar video**) usa **tu propia cuenta de Grok**.

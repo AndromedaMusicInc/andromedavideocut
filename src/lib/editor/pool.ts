@@ -1,3 +1,4 @@
+import { liveClips } from "@/lib/editor/types";
 import type { Asset, Clip } from "@/lib/editor/types";
 
 export class MediaPool {
@@ -51,6 +52,7 @@ export class MediaPool {
   }
 
   sync(time: number, playing: boolean, clips: Clip[]) {
+    clips = liveClips(clips);
     const wanted = new Map<string, { time: number; rate: number }>();
     for (const clip of clips) {
       if (clip.type !== "video" || !clip.assetId) continue;

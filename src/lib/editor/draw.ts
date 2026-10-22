@@ -1,3 +1,4 @@
+import { liveClips } from "@/lib/editor/types";
 import { paintRecipe } from "@/lib/editor/fx-paint";
 import { recipeOf } from "@/lib/editor/fx-catalog";
 import { drawGenerator, drawSticker } from "@/lib/editor/generators";
@@ -1099,6 +1100,7 @@ export function drawFrame(
   layers = 1,
   trackOrder?: string[],
 ) {
+  clips = liveClips(clips);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#050506";

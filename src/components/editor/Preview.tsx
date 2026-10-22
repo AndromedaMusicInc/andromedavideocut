@@ -1,3 +1,5 @@
+import { detachedSize, registerViewerCanvas, useViewer } from "@/lib/editor/detach";
+import { LevelMeter, OutputSelect, TestSound } from "@/components/editor/AudioOutput";
 import { drawFrame } from "@/lib/editor/draw";
 import { pause, seek, startEngine, togglePlay } from "@/lib/editor/engine";
 import { playback } from "@/lib/editor/playback";
@@ -26,8 +28,13 @@ function fitCanvas(canvas: HTMLCanvasElement, box: HTMLElement, aspectW: number,
   canvas.style.width = `${Math.max(2, Math.floor(cw))}px`;
   canvas.style.height = `${Math.max(2, Math.floor(ch))}px`;
   const dpr = Math.min(1.75, window.devicePixelRatio || 1);
-  const bw = Math.max(2, Math.round(cw * dpr));
-  const bh = Math.max(2, Math.round(bw / ar));
+  let bw = Math.max(2, Math.round(cw * dpr));
+  let bh = Math.max(2, Math.round(bw / ar));
+  if (useViewer.getState().detached) {
+    const big = detachedSize(aspectW, aspectH);
+    bw = big.w;
+    bh = big.h;
+  }
   if (canvas.width !== bw || canvas.height !== bh) {
     canvas.width = bw;
     canvas.height = bh;
@@ -49,6 +56,8 @@ export function Preview() {
   const [viewerFs, setViewerFs] = useState(false);
   useEffect(() => onFullscreenChange(() => setViewerFs(fullscreenElement() === viewerRef.current)), []);
   const faultRef = useRef<string | null>(null);
+  const detached = useViewer((s) => s.detached);
+  useEffect(() => registerViewerCanvas(() => canvasRef.current), []);
 
   useEffect(() => {
     try {
@@ -111,9 +120,19 @@ export function Preview() {
   return (
     <section ref={viewerRef} data-viewer="" className="flex min-h-40 min-w-0 flex-1 flex-col bg-sunken" style={{ position: "relative" }}>
       <div className="relative min-h-0 flex-1 overflow-hidden">
+        {detached ? (
+          <div data-viewer-detached="" className="absolute inset-0 z-30 grid place-items-center bg-sunken/95 p-4 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm font-semibold text-fg">El visor está en otra ventana</p>
+              <p className="max-w-xs text-xs text-muted">Puedes moverla a otra pantalla y ponerla en pantalla completa (F o doble clic). El sonido sale por aquí.</p>
+              <button type="button" onClick={() => useViewer.getState().close()} className="mt-1 h-9 rounded-md bg-accent px-3 text-sm font-semibold text-accent-ink">Traer el visor de vuelta</button>
+            </div>
+          </div>
+        ) : null}
         <div ref={stageRef} className="absolute inset-0 flex items-center justify-center p-3">
           <div ref={hostRef} className="relative">
             <canvas
+              data-preview-canvas=""
               ref={canvasRef}
               className="block shrink-0 cursor-move touch-none rounded-md bg-bg ring-1 ring-line"
               onPointerDown={pickClip}
@@ -271,6 +290,22 @@ export function Preview() {
         <Clock />
         <span className="text-sm text-faint">/</span>
         <span className="text-sm text-muted tabular-nums">{formatTime(contentEnd(clips))}</span>
+        <button
+          type="button"
+          data-detach-viewer=""
+          aria-pressed={detached}
+          onClick={() => {
+            if (detached) useViewer.getState().close();
+            else if (!useViewer.getState().open()) useEditor.getState().tell("No se pudo abrir otra ventana. Permite las ventanas emergentes para AndromedaVideoCut.");
+          }}
+          title={detached ? "Volver a poner el visor en el editor" : "Separar visor (otra ventana o pantalla)"}
+          className={cn("h-8 shrink-0 rounded-md px-2 text-xs font-semibold", detached ? "bg-accent text-accent-ink" : "text-muted hover:text-fg")}
+        >
+          {detached ? "Unir visor" : "Separar visor"}
+        </button>
+        <LevelMeter className="ml-1 hidden sm:block" />
+        <TestSound compact />
+        <span className="hidden lg:inline-flex"><OutputSelect compact /></span>
         <button
           type="button"
           aria-pressed={zona}

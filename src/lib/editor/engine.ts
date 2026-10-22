@@ -10,6 +10,13 @@ export function setFrameSink(fn: ((time: number) => void) | null) {
   frameSink = fn;
 }
 
+mixer.onRunning = () => {
+  // El dispositivo arrancó tarde: reprograma desde el tiempo actual para que sí suene.
+  if (!playback.playing) return;
+  const state = useEditor.getState();
+  mixer.playFrom(playback.time, state.clips, state.muted);
+};
+
 export function play() {
   const { clips } = useEditor.getState();
   const end = contentEnd(clips);

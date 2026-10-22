@@ -1,8 +1,24 @@
 // Puente seguro (contextIsolation): el renderer pide acciones de IA; los tokens nunca cruzan.
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 contextBridge.exposeInMainWorld("avcDesktop", {
   version: process.env.AVC_APP_VERSION || "",
   openExternal: (url) => ipcRenderer.invoke("open-external", String(url)),
+  projects: {
+    list: () => ipcRenderer.invoke("projects:list"),
+    read: (id) => ipcRenderer.invoke("projects:read", id),
+    write: (meta, data) => ipcRenderer.invoke("projects:write", meta, data),
+    remove: (id) => ipcRenderer.invoke("projects:remove", id),
+  },
+  pathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file) || "";
+    } catch {
+      return "";
+    }
+  },
+  checkUpdates: () => ipcRenderer.invoke("updates:check"),
+  showItemInFolder: (p) => ipcRenderer.invoke("file:show", String(p)),
+  feedCache: (op, text) => ipcRenderer.invoke("feed:cache", op, text),
   ai: {
     status: () => ipcRenderer.invoke("ai:status"),
     login: () => ipcRenderer.invoke("ai:login"),

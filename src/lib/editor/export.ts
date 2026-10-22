@@ -83,6 +83,8 @@ export interface ExportOptions {
   quality?: QualityId;
   fps?: FrameRate;
   audio?: boolean;
+  /** Exportar solo estos clips (menú contextual), corridos para empezar en 0. */
+  clipIds?: string[];
 }
 
 export type ExportResult =
@@ -94,6 +96,21 @@ export async function exportVideo(
   isCancelled: () => boolean,
   options?: ExportOptions,
 ): Promise<ExportResult> {
+  if (options?.clipIds?.length) {
+    // Exporta solo la selección: se cambia la línea de tiempo durante la exportación (sin historial
+    // ni autoguardado) y se restaura al terminar, pase lo que pase.
+    const ids = new Set(options.clipIds);
+    const saved = useEditor.getState();
+    const picked = saved.clips.filter((c) => ids.has(c.id));
+    const first = Math.min(...picked.map((c) => c.start));
+    const keep = { clips: saved.clips, hydrated: saved.hydrated };
+    useEditor.setState({ hydrated: false, clips: picked.map((c) => ({ ...c, start: c.start - first })) });
+    try {
+      return await exportVideo(onProgress, isCancelled, { ...options, clipIds: undefined });
+    } finally {
+      useEditor.setState(keep);
+    }
+  }
   const { aspect, clips, name } = useEditor.getState();
   const end = contentEnd(clips);
   if (end <= 0.05) throw new Error("Agrega un clip antes de exportar");

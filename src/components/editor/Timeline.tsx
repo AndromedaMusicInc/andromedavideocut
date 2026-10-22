@@ -1,3 +1,4 @@
+import { useClipMenu } from "@/components/editor/ClipMenu";
 import { mixer, waveformUrl } from "@/lib/editor/audio";
 import { pause, seek } from "@/lib/editor/engine";
 import { playback } from "@/lib/editor/playback";
@@ -664,7 +665,7 @@ function Waveform({ id }: { id: string }) {
 }
 
 function ClipView({ clip, pps, parked }: { clip: Clip; pps: number; parked?: boolean }) {
-  const selected = useEditor((s) => s.selectedId === clip.id);
+  const selected = useEditor((s) => s.selectedId === clip.id || s.selectedIds.includes(clip.id));
   return (
     <div
       data-clip={clip.id}
@@ -682,7 +683,17 @@ function ClipView({ clip, pps, parked }: { clip: Clip; pps: number; parked?: boo
         parked && selected && "opacity-40",
       )}
       style={{ left: clip.start * pps, width: Math.max(8, clip.duration * pps) }}
-      onPointerDown={(event) => beginDrag(event, clip, "move")}
+      onPointerDown={(event) => {
+        if (event.button === 2) return;
+        beginDrag(event, clip, "move");
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const st = useEditor.getState();
+        if (!st.selection().includes(clip.id)) st.select(clip.id);
+        useClipMenu.getState().open(event.clientX, event.clientY);
+      }}
     >
       <span
         className={cn(
@@ -706,10 +717,49 @@ function ClipView({ clip, pps, parked }: { clip: Clip; pps: number; parked?: boo
   );
 }
 
+/** Arrastra toda la selección múltiple en el tiempo (misma pista de cada clip). */
+function beginGroupDrag(event: ReactPointerEvent, clip: Clip) {
+  const state = useEditor.getState();
+  const ids = [...state.selectedIds];
+  const orig: Record<string, number> = {};
+  for (const c of state.clips) if (ids.includes(c.id)) orig[c.id] = c.start;
+  const before = state.snapshot();
+  const originX = event.clientX;
+  const pps = state.pps;
+  const others = state.clips.filter((c) => !ids.includes(c.id));
+  const move = (ev: PointerEvent) => {
+    let dx = (ev.clientX - originX) / pps;
+    const now = useEditor.getState();
+    if (now.snap) {
+      const points = [0, playback.time, ...now.beats, ...others.flatMap((o) => [o.start, o.start + o.duration])];
+      const s0 = (orig[clip.id] ?? 0) + dx;
+      dx = snapTo(s0, points, pps) - (orig[clip.id] ?? 0);
+    }
+    now.moveSelection(ids, orig, dx);
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    const now = useEditor.getState();
+    if (now.clips.some((c) => ids.includes(c.id) && c.start !== orig[c.id])) now.pushHistory(before);
+    if (playback.playing) mixer.playFrom(playback.time, now.clips, now.muted);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
 function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" | "end") {
   event.stopPropagation();
   event.preventDefault();
   const state = useEditor.getState();
+  if (mode === "move" && (event.shiftKey || event.ctrlKey || event.metaKey)) {
+    state.toggleSelect(clip.id);
+    return;
+  }
+  if (mode === "move" && state.selectedIds.length > 1 && state.selectedIds.includes(clip.id)) {
+    beginGroupDrag(event, clip);
+    return;
+  }
   state.select(clip.id);
   const pps = state.pps;
   const originX = event.clientX;

@@ -3,6 +3,34 @@
 Todas las versiones de AndromedaVideoCut para escritorio. Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 versionado [SemVer](https://semver.org/lang/es/).
 
+## [1.0.1] — 2026-10-22
+### Agregado
+- **Varios proyectos**: lista con nombre, formato, miniatura, tamaño, duración y fecha. Crear, renombrar, duplicar,
+  buscar, vista de cuadrícula o lista y Papelera con recuperación. En escritorio se guardan en la carpeta de datos de la
+  app (`%APPDATA%/AndromedaVideoCut/projects`). El proyecto de la 1.0.0 se migra sin perder nada.
+- **Pantalla de inicio** nueva: barra lateral (Inicio, Plantillas, Andromeda, Biblioteca, Ajustes, Buscar
+  actualizaciones), botón Crear proyecto, accesos rápidos y sección **Lo nuevo de Andromeda** con lanzamientos,
+  playlists, videos y noticias reales de Andromeda Music Inc. Se actualiza desde internet y funciona sin conexión.
+- Botón para volver al inicio desde el editor.
+- **Salida de audio**: elige altavoz o audífonos (o "Predeterminado del sistema"); se recuerda.
+- **Vúmetro** junto al visor y botón **Probar sonido**.
+- **Ayuda → Diagnóstico de audio…** con un botón para copiar el reporte.
+- **Selección múltiple**: Ctrl+A (Cmd+A), Esc, Mayús/Ctrl+clic, arrastrar varios clips a la vez, borrar varios.
+- **Menú contextual** en los clips: Copiar, Cortar, Pegar, Borrar, Dividir en el cabezal, Separar audio,
+  Desactivar/activar, Duplicar, Reemplazar clip, Exportar clips seleccionados y Abrir ubicación del archivo.
+- **Separar visor**: el visor en su propia ventana, en la pantalla que elijas, con pantalla completa y sin marco
+  opcional; recuerda posición y monitor.
+
+### Corregido
+- **La vista previa no sonaba en algunos equipos con Windows.** El audio esperaba solo 1,2 s a que arrancara el
+  dispositivo; con WASAPI el primer arranque puede tardar más y la reproducción quedaba programada en silencio.
+  Ahora espera hasta 4 s, reprograma el audio en cuanto el dispositivo arranca, desbloquea el audio con el primer clic
+  o tecla, permite autoplay en la ventana y no frena el audio cuando la ventana pierde el foco.
+- El guardado automático no se activaba después de reabrir la app; ahora guarda siempre.
+- La app de escritorio sirve los medios con soporte de rangos (206), necesario para buscar en videos largos.
+- Proyectos con clips incompletos ya no hacen desaparecer la línea de tiempo al seleccionarlos.
+- La interfaz del editor ya no selecciona texto al arrastrar o con Ctrl+A.
+
 ## [1.0.0] — 2026-10-22
 Primera versión para Windows.
 
