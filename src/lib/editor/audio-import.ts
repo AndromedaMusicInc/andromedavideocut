@@ -77,7 +77,7 @@ export async function loadAssetAudio(asset: Asset, blob: Blob, hasAudio: boolean
   if (asset.kind === "image" || hasAudio === false) return "sin-audio";
   const declared = await wavDeclaredBytes(blob).catch(() => null);
   if (declared !== null && declared > blob.size * 1.01 + 1024) {
-    const gb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`);
+    const gb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${Math.round(n / 1e6)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
     const msg = `Archivo incompleto: la cabecera WAV/RF64 dice ${gb(declared)} de audio pero el archivo pesa ${gb(blob.size)}. Se importa lo que hay; copia de nuevo el archivo completo.`;
     log({ evento: "audio", id: asset.id, name: asset.name, resultado: "aviso", error: msg });
     st.patchAsset(asset.id, { audioError: msg });
