@@ -1,7 +1,7 @@
 import { ingestFile } from "@/lib/editor/import-media";
 import { seek } from "@/lib/editor/engine";
 import { AiError, generateVideo, useAi } from "@/lib/ai/xai";
-import { AiLock } from "@/components/editor/ConnectGrok";
+import { AiLock, UsageBar } from "@/components/editor/ConnectGrok";
 import { STUDIO_PACKS } from "@/lib/editor/packs";
 import { useEditor } from "@/lib/editor/store";
 import { useState } from "react";
@@ -47,6 +47,7 @@ export function GeneratePane() {
 
   return (
     <div className="flex flex-col gap-3">
+      <UsageBar />
       <div>
         <h2 className="text-sm font-semibold text-fg">Generador de clips</h2>
         <p className="mt-1 text-sm text-pretty text-muted">{note}</p>

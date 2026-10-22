@@ -3,6 +3,28 @@
 Todas las versiones de AndromedaVideoCut para escritorio. Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 versionado [SemVer](https://semver.org/lang/es/).
 
+## [1.0.2] — 2026-10-22
+Versión de arreglos (sin funciones grandes nuevas).
+### Cambiado
+- **Icono** con esquinas redondeadas (fondo transparente fuera de la curva) en el instalador, la ventana, la barra de
+  tareas y el favicon de la web.
+- **Pantalla de inicio** con diseño propio: botón compacto **Nuevo proyecto**, accesos rápidos en chips, proyectos
+  recientes al centro y **Lo nuevo de Andromeda** en un panel lateral (noticias, lanzamientos y playlists).
+- **Biblioteca (filtros, looks, efectos, stickers, texto, audio, fundidos y medios)**: un clic **ya no agrega nada** a la
+  línea de tiempo. El clic muestra una **vista previa** en el visor (filtro/efecto sobre el clip seleccionado o el que
+  está bajo el cabezal, texto o sticker encima, el audio suena unos segundos). Se quita al hacer clic en otra parte o con
+  Esc. Para usarlo hay que **arrastrarlo** a la línea de tiempo o a un clip. Se quitó el "+" que ponía fundidos solo.
+### Agregado
+- Botón **Separar visor** visible en la esquina del visor. En la PC: elegir monitor, **pantalla completa en ese
+  monitor**, recuerda posición y pantalla, y **Volver a acoplar**. En la web abre una ventana emergente
+  (elegir monitor: "más opciones en la versión de PC").
+- **Ctrl+S / Cmd+S guarda** el proyecto (antes cortaba el clip; la tecla S sola sigue cortando).
+- **Barra de uso de Grok esta semana** (panel Generar y Ajustes → IA): cuenta los pedidos de IA hechos desde esta app,
+  se reinicia cada lunes, y muestra el límite por minuto solo cuando xAI lo informa. Bloqueada sin cuenta conectada.
+### Arreglado
+- Si no se puede guardar (almacenamiento lleno), ahora sale un **aviso visible** en vez de fallar en silencio.
+- Al cerrar la ventana/pestaña o cambiar de proyecto ya **no se pierde el último cambio** (se guarda al instante).
+
 ## [1.0.1] — 2026-10-22
 ### Agregado
 - **Varios proyectos**: lista con nombre, formato, miniatura, tamaño, duración y fecha. Crear, renombrar, duplicar,

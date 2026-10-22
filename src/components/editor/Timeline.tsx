@@ -427,6 +427,8 @@ function Joins({ trackId, pps }: { trackId: string; pps: number }) {
       {marks.map((clip) => {
         const on = clip.transition !== "none";
         const named = TRANSITIONS.find((item) => item.id === clip.transition)?.name ?? "Corte";
+        // 1.0.2: sin "+" que agrega solo; el fundido se pone arrastrándolo desde Fundidos.
+        if (!on) return null;
         return (
           <button
             key={clip.id}
@@ -441,12 +443,6 @@ function Joins({ trackId, pps }: { trackId: string; pps: number }) {
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
-              if (!on) {
-                useEditor.getState().patchClip(clip.id, {
-                  transition: "fade",
-                  transitionDur: Math.max(0.4, clip.transitionDur),
-                });
-              }
               useEditor.getState().select(clip.id);
             }}
           >

@@ -14,6 +14,17 @@ interface DetachState {
   close: () => void;
 }
 
+export interface DisplayInfo { id: number; label: string; primary: boolean; current: boolean; w: number; h: number }
+export interface DesktopViewer {
+  displays: () => Promise<DisplayInfo[]>;
+  moveTo: (id: number, fullscreen: boolean) => Promise<void>;
+  toggleFullscreen: () => Promise<boolean>;
+}
+/** API del visor en la versión de PC (monitores, pantalla completa en ese monitor). null en la web. */
+export function desktopViewer(): DesktopViewer | null {
+  return (window as unknown as { avcDesktop?: { viewer?: DesktopViewer } }).avcDesktop?.viewer ?? null;
+}
+
 let canvasGetter: (() => HTMLCanvasElement | null) | null = null;
 export function registerViewerCanvas(get: () => HTMLCanvasElement | null) {
   canvasGetter = get;
@@ -33,7 +44,8 @@ button:hover{border-color:#00d4c8}
 <video id="v" autoplay muted playsinline></video>
 <div id="bar"><b>AndromedaVideoCut · Visor</b>
 <button id="fs" title="Pantalla completa (F o doble clic)">Pantalla completa</button>
-<button id="back" title="Volver a poner el visor en el editor">Volver al editor</button></div>
+<select id="mon" title="Mover a otra pantalla" style="display:none;height:32px;border-radius:6px;background:#1c1c21;color:#f3f3f5;border:1px solid #2c2c33;-webkit-app-region:no-drag"></select>
+<button id="back" title="Volver a poner el visor en el editor">Volver a acoplar</button></div>
 </body></html>`;
 
 function wire(win: Window, stream: MediaStream, onClose: () => void) {
@@ -45,9 +57,21 @@ function wire(win: Window, stream: MediaStream, onClose: () => void) {
   video.srcObject = stream;
   void video.play().catch(() => undefined);
   const fs = () => {
+    const d = desktopViewer();
+    if (d) return void d.toggleFullscreen();
     if (doc.fullscreenElement) void doc.exitFullscreen();
     else void doc.documentElement.requestFullscreen().catch(() => undefined);
   };
+  const dv = desktopViewer();
+  const mon = doc.getElementById("mon") as HTMLSelectElement;
+  if (dv) {
+    void dv.displays().then((list) => {
+      if (list.length < 2) return;
+      mon.style.display = "";
+      mon.innerHTML = list.map((d) => `<option value="${d.id}"${d.current ? " selected" : ""}>${d.label}${d.primary ? " (principal)" : ""} · ${d.w}×${d.h}</option>`).join("");
+    });
+    mon.addEventListener("change", () => void dv.moveTo(Number(mon.value), false));
+  }
   doc.getElementById("fs")!.addEventListener("click", fs);
   video.addEventListener("dblclick", fs);
   doc.addEventListener("keydown", (e) => {

@@ -1,6 +1,7 @@
-import { detachedSize, registerViewerCanvas, useViewer } from "@/lib/editor/detach";
+import { desktopViewer, detachedSize, registerViewerCanvas, useViewer, type DisplayInfo } from "@/lib/editor/detach";
 import { LevelMeter, OutputSelect, TestSound } from "@/components/editor/AudioOutput";
 import { drawFrame } from "@/lib/editor/draw";
+import { useLibPreview, withLibPreview } from "@/lib/editor/lib-preview";
 import { pause, seek, startEngine, togglePlay } from "@/lib/editor/engine";
 import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
@@ -9,9 +10,54 @@ import { isVideoTrack, paintOrder } from "@/lib/editor/tracks";
 import { BOT_Y, MID_Y, TOP_Y } from "@/lib/editor/align";
 import { ASPECTS, TEXT_FONTS, fontFace, type Clip } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
-import { Expand, Pause, Shrink, SkipBack } from "lucide-react";
+import { Expand, ExternalLink, Pause, Shrink, SkipBack } from "lucide-react";
 import { fullscreenElement, onFullscreenChange, toggleFullscreen } from "@/lib/fullscreen";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+
+export function openDetached() {
+  if (useViewer.getState().open()) return;
+  useEditor.getState().tell(desktopViewer() ? "No se pudo abrir el visor en otra ventana." : "Tu navegador bloqueó la ventana del visor: permite las ventanas emergentes. Más opciones (otro monitor, recordar posición) en la versión de PC.");
+}
+
+function PreviewBadge() {
+  const item = useLibPreview((s) => s.item);
+  if (!item) return null;
+  const name = item.kind === "text" ? item.draft.name : item.name;
+  return (
+    <div data-lib-preview-badge="" className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-bg/85 px-2.5 py-1 text-xs text-fg ring-1 ring-accent">
+      Vista previa: <b>{name}</b> · arrástralo a la línea de tiempo para usarlo
+    </div>
+  );
+}
+
+function DetachedPanel() {
+  const dv = desktopViewer();
+  const [displays, setDisplays] = useState<DisplayInfo[]>([]);
+  useEffect(() => {
+    if (dv) void dv.displays().then(setDisplays);
+  }, [dv]);
+  return (
+    <div data-viewer-detached="" className="absolute inset-0 z-30 grid place-items-center bg-sunken/95 p-4 text-center">
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-sm font-semibold text-fg">El visor está en otra ventana</p>
+        <p className="max-w-xs text-xs text-muted">Arrástrala a otra pantalla o elige una aquí. El sonido sigue saliendo por el editor.</p>
+        {dv ? (
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {displays.map((d, i) => (
+              <span key={d.id} className="inline-flex overflow-hidden rounded-md border border-line text-xs">
+                <button type="button" data-move-display={d.id} onClick={() => void dv.moveTo(d.id, false).then(() => dv.displays().then(setDisplays))} className={cn("px-2 py-1.5", d.current ? "bg-accent/15 text-accent" : "text-fg hover:bg-surface")}>{d.label || `Pantalla ${i + 1}`}{d.primary ? " (principal)" : ""}</button>
+                <button type="button" data-fullscreen-display={d.id} title="Pantalla completa en este monitor" onClick={() => void dv.moveTo(d.id, true)} className="border-l border-line px-2 text-muted hover:text-fg"><Expand className="size-3.5" /></button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p data-pc-hint="" className="text-[11px] text-faint">Elegir monitor y recordar posición: más opciones en la versión de PC.</p>
+        )}
+        <button type="button" data-reattach="" onClick={() => useViewer.getState().close()} className="mt-1 h-9 rounded-md bg-accent px-3 text-sm font-semibold text-accent-ink">Volver a acoplar</button>
+      </div>
+    </div>
+  );
+}
 
 function fitCanvas(canvas: HTMLCanvasElement, box: HTMLElement, aspectW: number, aspectH: number) {
   const cs = getComputedStyle(box);
@@ -79,7 +125,7 @@ export function Preview() {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       try {
-        drawFrame(ctx, canvas.width, canvas.height, playback.time, useEditor.getState().clips, useEditor.getState().layers, useEditor.getState().trackOrder);
+        drawFrame(ctx, canvas.width, canvas.height, playback.time, withLibPreview(useEditor.getState().clips), useEditor.getState().layers, useEditor.getState().trackOrder);
         if (faultRef.current) {
           faultRef.current = null;
           setFault(null);
@@ -120,15 +166,12 @@ export function Preview() {
   return (
     <section ref={viewerRef} data-viewer="" className="flex min-h-40 min-w-0 flex-1 flex-col bg-sunken" style={{ position: "relative" }}>
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {detached ? (
-          <div data-viewer-detached="" className="absolute inset-0 z-30 grid place-items-center bg-sunken/95 p-4 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-sm font-semibold text-fg">El visor está en otra ventana</p>
-              <p className="max-w-xs text-xs text-muted">Puedes moverla a otra pantalla y ponerla en pantalla completa (F o doble clic). El sonido sale por aquí.</p>
-              <button type="button" onClick={() => useViewer.getState().close()} className="mt-1 h-9 rounded-md bg-accent px-3 text-sm font-semibold text-accent-ink">Traer el visor de vuelta</button>
-            </div>
-          </div>
-        ) : null}
+        <PreviewBadge />
+        {detached ? <DetachedPanel /> : (
+          <button type="button" data-detach-corner="" onClick={openDetached} title="Separar visor: llévalo a otra ventana o pantalla" className="absolute right-2 top-2 z-20 inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-bg/80 px-2.5 text-xs font-semibold text-fg backdrop-blur hover:border-accent">
+            <ExternalLink className="size-3.5" /> Separar visor
+          </button>
+        )}
         <div ref={stageRef} className="absolute inset-0 flex items-center justify-center p-3">
           <div ref={hostRef} className="relative">
             <canvas
@@ -296,12 +339,12 @@ export function Preview() {
           aria-pressed={detached}
           onClick={() => {
             if (detached) useViewer.getState().close();
-            else if (!useViewer.getState().open()) useEditor.getState().tell("No se pudo abrir otra ventana. Permite las ventanas emergentes para AndromedaVideoCut.");
+            else openDetached();
           }}
           title={detached ? "Volver a poner el visor en el editor" : "Separar visor (otra ventana o pantalla)"}
           className={cn("h-8 shrink-0 rounded-md px-2 text-xs font-semibold", detached ? "bg-accent text-accent-ink" : "text-muted hover:text-fg")}
         >
-          {detached ? "Unir visor" : "Separar visor"}
+          {detached ? "Volver a acoplar" : "Separar visor"}
         </button>
         <LevelMeter className="ml-1 hidden sm:block" />
         <TestSound compact />

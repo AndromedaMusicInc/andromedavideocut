@@ -1181,3 +1181,8 @@ export { contentEnd };
 
 let clipboard: Clip[] | null = null;
 let styleClipboard: Partial<Clip> | null = null;
+
+if (typeof window !== "undefined") {
+  // Solo lectura, para pruebas y diagnóstico.
+  (window as unknown as { __avcClips?: () => unknown }).__avcClips = () => useEditor.getState().clips.map((c) => ({ id: c.id, type: c.type, trackId: c.trackId, filter: c.filter, effect: c.effect, start: c.start, duration: c.duration }));
+}

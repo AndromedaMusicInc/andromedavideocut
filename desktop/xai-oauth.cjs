@@ -291,14 +291,20 @@ async function apiFetch(cfg, init) {
       body.append("file", new Blob([Buffer.from(init.wav)], { type: "audio/wav" }), "audio.wav");
     }
     const res = await fetch(`${cfg.apiBase}${init.path}`, { method: init.method, headers, body });
-    return { status: res.status, body: await res.text() };
+    // Límites reales que xAI manda en cabeceras (por minuto). No hay cuota semanal pública para cuentas Grok.
+    const limits = {};
+    for (const k of ["x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", "x-ratelimit-reset-requests", "x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens"]) {
+      const v = res.headers.get(k);
+      if (v != null) limits[k] = v;
+    }
+    return { status: res.status, body: await res.text(), limits };
   };
   if (!session?.access_token) return { status: -1, body: "" };
   try {
     let r = await send();
     if (r.status === 401 && (await refresh(cfg)) && session) r = await send();
     if (r.status === 401 || r.status === 403) writeSession(null); // sin suscripción o sesión inválida: queda bloqueado
-    return { status: r.status, body: r.body.slice(0, 200_000) };
+    return { status: r.status, body: r.body.slice(0, 200_000), limits: r.limits || {} };
   } catch {
     return { status: 0, body: "" };
   }

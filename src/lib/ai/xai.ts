@@ -96,7 +96,8 @@ function friendly(status: number): AiError {
 
 async function call(init: ReqInit): Promise<unknown> {
   if (!isDesktop()) throw new AiError(DESKTOP_ONLY_MSG, "desktop-only");
-  const raw = await window.avcDesktop!.ai.request(init);
+  const raw = (await window.avcDesktop!.ai.request(init)) as RawResponse & { limits?: Record<string, string> };
+  if (raw.status > 0) recordUse(raw.limits);
   if (raw.status === -1) throw new AiError("Conecta tu cuenta de xAI/Grok para usar IA.", "no-session");
   if (raw.status === 0) throw new AiError("No hay conexión a internet (o no se pudo llegar a Grok). Revisa tu red y vuelve a intentar.", "offline");
   if (raw.status < 200 || raw.status >= 300) {
@@ -179,4 +180,51 @@ export async function generateVideo(prompt: string, aspect: string, onStatus: (s
     return new Blob([r.data], { type: "video/mp4" });
   }
   throw new AiError("Tardó demasiado. Prueba otra frase.", "other");
+}
+
+
+// ---- Uso semanal (1.0.2) ----
+// xAI no publica una cuota semanal para cuentas Grok (SuperGrok / Premium+) ni un endpoint de uso para
+// sesiones OAuth. Por eso: contador local de pedidos de IA hechos DESDE ESTA APP en la semana (lunes a
+// domingo, hora local) + el límite real por minuto si xAI lo manda en cabeceras x-ratelimit-*.
+const USAGE_KEY = "avc.ai.usage.v1";
+export interface Usage {
+  count: number;
+  weekStart: number;
+  resetAt: number;
+  minute?: { limit: number; remaining: number } | null;
+}
+export function weekStart(now = new Date()) {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+export function readUsage(now = new Date()): Usage {
+  const ws = weekStart(now);
+  let u: Partial<Usage> = {};
+  try {
+    u = JSON.parse(localStorage.getItem(USAGE_KEY) || "{}");
+  } catch {
+    u = {};
+  }
+  const reset = new Date(ws);
+  reset.setDate(reset.getDate() + 7);
+  if (u.weekStart !== ws) return { count: 0, weekStart: ws, resetAt: reset.getTime(), minute: null };
+  return { count: u.count ?? 0, weekStart: ws, resetAt: reset.getTime(), minute: u.minute ?? null };
+}
+export const useUsage = create<{ usage: Usage; bump: () => void }>((set) => ({
+  usage: typeof window === "undefined" ? { count: 0, weekStart: 0, resetAt: 0 } : readUsage(),
+  bump: () => set({ usage: readUsage() }),
+}));
+function recordUse(limits?: Record<string, string>) {
+  const u = readUsage();
+  const lim = Number(limits?.["x-ratelimit-limit-requests"]);
+  const rem = Number(limits?.["x-ratelimit-remaining-requests"]);
+  const minute = Number.isFinite(lim) && lim > 0 && Number.isFinite(rem) ? { limit: lim, remaining: rem } : u.minute ?? null;
+  try {
+    localStorage.setItem(USAGE_KEY, JSON.stringify({ count: u.count + 1, weekStart: u.weekStart, minute }));
+  } catch {
+    /* sin espacio: no se cuenta */
+  }
+  useUsage.getState().bump();
 }

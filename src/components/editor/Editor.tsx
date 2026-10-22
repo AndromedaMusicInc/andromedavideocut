@@ -98,9 +98,11 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
 
   const metaRef = useRef(project);
   const saveNow = useRef<() => Promise<void>>(async () => {});
+  const flushRef = useRef<() => void>(() => {});
   useEffect(() => {
     let alive = true;
     let timer = 0;
+    let pending = false;
     let lastThumb = 0;
     const sizes = new Map<string, number>();
     let unsub = () => {};
@@ -128,7 +130,43 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         }
         if (alive && assets.length) useEditor.getState().setAssets(assets);
       }
+      const payload = (state: ReturnType<typeof useEditor.getState>) => ({
+        v: 1 as const,
+        name: state.name,
+        aspect: state.aspect,
+        clips: state.clips,
+        muted: state.muted,
+        beats: state.beats,
+        bpm: state.bpm,
+        downbeat: state.downbeat,
+        layers: state.layers,
+        fxCount: state.fxCount,
+        assets: state.assets,
+      });
+      // 1.0.2: si no se pudo guardar (disco/almacenamiento lleno) se avisa, no se calla.
+      let failed = false;
+      const reportSave = (ok: boolean | undefined) => {
+        if (ok === false) {
+          failed = true;
+          (window as unknown as { __avcSaveFailed?: number }).__avcSaveFailed = Date.now();
+          useEditor.getState().tell("⚠ No se pudo guardar el proyecto: el almacenamiento está lleno. Libera espacio o borra proyectos de la Papelera; tus últimos cambios aún no están guardados.");
+        } else if (ok && failed) {
+          failed = false;
+          useEditor.getState().tell("Proyecto guardado de nuevo.");
+        }
+      };
+      // Guardado inmediato y sin esperas (al cerrar la pestaña o cambiar de proyecto).
+      flushRef.current = () => {
+        if (!pending) return;
+        pending = false;
+        window.clearTimeout(timer);
+        const state = useEditor.getState();
+        if (!state.hydrated) return;
+        metaRef.current = { ...metaRef.current, name: state.name, aspect: state.aspect, updatedAt: Date.now(), duration: contentEnd(state.clips) };
+        void writeProject(metaRef.current, payload(state)).then(reportSave);
+      };
       const save = async () => {
+        pending = false;
         const state = useEditor.getState();
         if (!state.hydrated) return;
         const now = Date.now();
@@ -144,19 +182,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         }
         bytes += JSON.stringify(state.clips).length;
         metaRef.current = { ...metaRef.current, name: state.name, aspect: state.aspect, thumb, updatedAt: now, bytes, duration: contentEnd(state.clips) };
-        await writeProject(metaRef.current, {
-          v: 1,
-          name: state.name,
-          aspect: state.aspect,
-          clips: state.clips,
-          muted: state.muted,
-          beats: state.beats,
-          bpm: state.bpm,
-          downbeat: state.downbeat,
-          layers: state.layers,
-          fxCount: state.fxCount,
-          assets: state.assets,
-        });
+        reportSave(await writeProject(metaRef.current, payload(state)));
       };
       saveNow.current = async () => {
         window.clearTimeout(timer);
@@ -167,12 +193,21 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         // Solo cambios del proyecto (no el cabezal ni la reproducción).
         if (state.clips === prev.clips && state.name === prev.name && state.aspect === prev.aspect && state.muted === prev.muted && state.assets === prev.assets && state.beats === prev.beats && state.layers === prev.layers) return;
         window.clearTimeout(timer);
+        pending = true;
         timer = window.setTimeout(() => void save(), 400);
       });
       // Primera miniatura cuando el visor ya dibujó.
       window.setTimeout(() => alive && void save(), 1200);
     })();
+    const onHide = () => flushRef.current();
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
     return () => {
+      // Cambiar de proyecto: guarda lo pendiente antes de soltar el editor.
+      flushRef.current();
+      flushRef.current = () => {};
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onHide);
       alive = false;
       unsub();
       window.clearTimeout(timer);
@@ -232,7 +267,11 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
       if (event.key === " " || event.code === "Space") {
         event.preventDefault();
         togglePlay();
-      } else if (event.key.toLowerCase() === "s") {
+      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        // 1.0.2: Ctrl/Cmd+S guarda (antes cortaba el clip).
+        event.preventDefault();
+        void saveNow.current().then(() => useEditor.getState().tell("Proyecto guardado."));
+      } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "s") {
         splitAt(playback.time);
       } else if (event.key === "Delete" || event.key === "Backspace") {
         deleteSelected();

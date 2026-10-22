@@ -1,11 +1,12 @@
 import { onPlate, paintLook, watchSwatch } from "@/lib/editor/fx-paint";
 import { GeneratePane } from "@/components/editor/Generate";
 import { ReelPane } from "@/components/editor/Reel";
-import { eatenClick, startLibraryDrag, type DragItem } from "@/lib/editor/place";
+import { eatenClick, startLibraryDrag, type DragItem, type DropHit } from "@/lib/editor/place";
 import { waveformUrl } from "@/lib/editor/audio";
 import { drawGenerator, drawSticker } from "@/lib/editor/generators";
 import { ingestFile } from "@/lib/editor/import-media";
 import { useEditor } from "@/lib/editor/store";
+import { toggleLibPreview, useLibPreview, type PreviewItem } from "@/lib/editor/lib-preview";
 import { playback } from "@/lib/editor/playback";
 import {
   AUDIO_GENS,
@@ -28,16 +29,43 @@ import { cn } from "@/lib/cn";
 import { Aperture, Blend, Clapperboard, Film, Music2, SlidersHorizontal, Sparkles, Sticker, Type, Upload, WandSparkles } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
-function sourceProps(item: DragItem, add: () => void) {
+/** 1.0.2: arrastrar agrega; clic solo muestra la vista previa (o nada, en medios). */
+function sourceProps(item: DragItem, preview?: PreviewItem) {
+  const key = previewKey(item);
   return {
+    "data-lib-item": key,
     onPointerDown: (event: ReactPointerEvent) => {
       startLibraryDrag(event.nativeEvent, item.kind, (hit) => {
+        useLibPreview.getState().clear();
         useEditor.getState().placeItem(item, hit.trackId, hit.time);
       });
     },
     onClick: () => {
       if (eatenClick()) return;
-      add();
+      if (preview) toggleLibPreview(preview, key);
+      else useEditor.getState().tell("Arrástralo a la línea de tiempo para agregarlo.");
+    },
+  };
+}
+function previewKey(item: DragItem) {
+  const r = item as unknown as { kind: string; id?: string; name?: string };
+  return `${r.kind}:${r.id ?? r.name ?? ""}`;
+}
+/** Props para looks/filtros/efectos/fundidos: clic = vista previa, arrastrar = agregar. */
+function fxProps(preview: PreviewItem, onDrop: ((hit: DropHit) => void) | null, dragKind: "effect" | "transition") {
+  const key = `${preview.kind}:${"id" in preview ? preview.id : ""}`;
+  return {
+    "data-lib-item": key,
+    onPointerDown: (event: ReactPointerEvent) => {
+      if (!onDrop) return;
+      startLibraryDrag(event.nativeEvent, dragKind, (hit) => {
+        useLibPreview.getState().clear();
+        onDrop(hit);
+      });
+    },
+    onClick: () => {
+      if (eatenClick()) return;
+      toggleLibPreview(preview, key);
     },
   };
 }
@@ -191,7 +219,7 @@ function MediaPane() {
               <button
                 type="button"
                 className="block w-full cursor-grab text-left touch-none"
-                {...sourceProps({ kind: "asset", id: asset.id }, () => void addAsset({ ...asset }))}
+                {...sourceProps({ kind: "asset", id: asset.id })}
               >
                 {asset.thumb ? (
                   <img src={asset.thumb} alt="" className="aspect-video w-full object-cover" />
@@ -219,7 +247,7 @@ function MediaPane() {
             <button
               key={item.id}
               type="button"
-              {...sourceProps({ kind: "generator", id: item.id, name: item.name }, () => addGenerator(item.id, item.name))}
+              {...sourceProps({ kind: "generator", id: item.id, name: item.name })}
               className="cursor-grab touch-none overflow-hidden rounded-md border border-line bg-sunken text-left hover:border-accent"
             >
               <MiniGen id={item.id} />
@@ -263,13 +291,13 @@ function AudioPane() {
     <div className="flex flex-col gap-3">
       <div>
         <h2 className="text-sm font-semibold text-fg">Audio</h2>
-        <p className="mt-1 text-sm text-muted">Arrastra la pista a Audio, o haz clic para soltarla en el cabezal.</p>
+        <p className="mt-1 text-sm text-muted">Clic para escuchar unos segundos. Arrástrala al canal de Audio para usarla.</p>
       </div>
       {AUDIO_GENS.map((item) => (
         <button
           key={item.id}
           type="button"
-          {...sourceProps({ kind: "audio", id: item.id, name: item.name }, () => addAudioGen(item.id, item.name))}
+          {...sourceProps({ kind: "audio", id: item.id, name: item.name }, { kind: "audio", id: item.id, name: item.name })}
           className="cursor-grab touch-none overflow-hidden rounded-md border border-line bg-sunken text-left hover:border-accent"
         >
           {waves[item.id] ? <img src={waves[item.id]} alt="" className="h-12 w-full object-cover" /> : <div className="h-12" />}
@@ -286,7 +314,7 @@ function TextPane() {
     <div className="flex flex-col gap-3">
       <div>
         <h2 className="text-sm font-semibold text-fg">Texto</h2>
-        <p className="mt-1 text-sm text-muted">Un estilo y la frase ya se lee en silencio. Arrastra o haz clic.</p>
+        <p className="mt-1 text-sm text-muted">Clic para verlo en el visor. Arrástralo a la línea de tiempo para agregarlo.</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         {TEXT_LOOKS.map((look) => {
@@ -295,7 +323,7 @@ function TextPane() {
             <button
               key={look.id}
               type="button"
-              {...sourceProps({ kind: "text", ...draft }, () => addText(draft))}
+              {...sourceProps({ kind: "text", ...draft }, { kind: "text", draft })}
               className="cursor-grab touch-none rounded-md border border-line bg-sunken px-1 py-2 text-center hover:border-accent"
             >
               <span className="block truncate text-sm leading-none" style={lookPreviewStyle(look)}>
@@ -323,7 +351,7 @@ function TextPane() {
               font: preset.font,
               duration: preset.duration,
             },
-            () => addText(preset),
+            { kind: "text", draft: preset },
           )}
           className="cursor-grab touch-none rounded-md border border-line bg-sunken px-3 py-3 text-left hover:border-accent"
         >
@@ -358,14 +386,14 @@ function StickerPane() {
     <div className="flex flex-col gap-3">
       <div>
         <h2 className="text-sm font-semibold text-fg">Stickers</h2>
-        <p className="mt-1 text-sm text-muted">Arrástralos encima del video.</p>
+        <p className="mt-1 text-sm text-muted">Clic para verlo en el visor. Arrástralo encima del video para agregarlo.</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {STICKERS.map((item) => (
           <button
             key={item.id}
             type="button"
-            {...sourceProps({ kind: "sticker", id: item.id, name: item.name }, () => addSticker(item.id, item.name))}
+            {...sourceProps({ kind: "sticker", id: item.id, name: item.name }, { kind: "sticker", id: item.id, name: item.name })}
             className="cursor-grab touch-none rounded-md border border-line bg-sunken p-2 text-left hover:border-accent"
           >
             <MiniSticker id={item.id} />
@@ -393,7 +421,6 @@ function FilterPane() {
   const setFilter = useEditor((s) => s.setFilter);
   const selected = useEditor((s) => s.clips.find((clip) => clip.id === s.selectedId));
   const [query, setQuery] = useState("");
-  const [asChannel, setAsChannel] = useState(false);
   const groups = Array.from(new Set(GRADES.map((item) => item.group)));
   const filtered = GRADES.filter((item) => {
     const q = query.trim().toLowerCase();
@@ -406,30 +433,8 @@ function FilterPane() {
       <div>
         <h2 className="text-sm font-semibold text-fg">Looks de película</h2>
         <p className="mt-1 text-sm text-muted">
-          Arrástralo a un canal, o entre dos canales para abrir uno nuevo. Tócalo para pintar solo el clip seleccionado.
+          Arrástralo a un canal, o entre dos canales para abrir uno nuevo. Tócalo para ver cómo queda (vista previa); arrástralo para usarlo.
         </p>
-      </div>
-      <div className="grid grid-cols-2 gap-1">
-        <button
-          type="button"
-          onClick={() => setAsChannel(false)}
-          className={cn(
-            "h-10 rounded-md border text-xs",
-            !asChannel ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
-          )}
-        >
-          Este clip
-        </button>
-        <button
-          type="button"
-          onClick={() => setAsChannel(true)}
-          className={cn(
-            "h-10 rounded-md border text-xs",
-            asChannel ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
-          )}
-        >
-          Canal nuevo
-        </button>
       </div>
       <input
         value={query}
@@ -447,16 +452,7 @@ function FilterPane() {
                 <button
                   key={item.id}
                   type="button"
-                  onPointerDown={(event) => {
-                    startLibraryDrag(event.nativeEvent, "effect", (hit) => {
-                      useEditor.getState().placeAdjust("grade", item.id, item.name, hit.time);
-                    });
-                  }}
-                  onClick={() => {
-                    if (eatenClick()) return;
-                    if (asChannel) useEditor.getState().placeAdjust("grade", item.id, item.name, playback.time, true);
-                    else useEditor.getState().setGrade(item.id);
-                  }}
+                  {...fxProps({ kind: "grade", id: item.id, name: item.name }, (hit) => useEditor.getState().placeAdjust("grade", item.id, item.name, hit.time), "effect")}
                   className="overflow-hidden rounded-md border border-line text-left hover:border-accent"
                 >
                   <GradeThumb patch={item.patch} />
@@ -476,17 +472,7 @@ function FilterPane() {
             <button
               key={item.id}
               type="button"
-              onPointerDown={(event) => {
-                if (item.id === "none") return;
-                startLibraryDrag(event.nativeEvent, "effect", (hit) => {
-                  useEditor.getState().placeAdjust("filter", item.id, item.name, hit.time);
-                });
-              }}
-              onClick={() => {
-                if (eatenClick()) return;
-                if (asChannel) useEditor.getState().placeAdjust("filter", item.id, item.name, playback.time, true);
-                else setFilter(item.id);
-              }}
+              {...fxProps({ kind: "filter", id: item.id, name: item.name }, item.id === "none" ? null : (hit) => useEditor.getState().placeAdjust("filter", item.id, item.name, hit.time), "effect")}
               className={cn(
                 "overflow-hidden rounded-md border text-left",
                 active ? "border-accent" : "border-line",
@@ -505,7 +491,6 @@ function FilterPane() {
 function EffectPane() {
   const setEffect = useEditor((s) => s.setEffect);
   const selected = useEditor((s) => s.clips.find((clip) => clip.id === s.selectedId));
-  const [asChannel, setAsChannel] = useState(false);
   const [query, setQuery] = useState("");
   const catalog = EFFECTS.filter((item) => item.id !== "none");
   const groups = Array.from(new Set(catalog.map((item) => item.group)));
@@ -534,28 +519,6 @@ function EffectPane() {
         placeholder="Buscar glitch, vhs, shake, zoom…"
         className="rounded-md border border-line bg-sunken px-3 py-2 text-sm text-fg"
       />
-      <div className="grid grid-cols-2 gap-1">
-        <button
-          type="button"
-          onClick={() => setAsChannel(false)}
-          className={cn(
-            "h-10 rounded-md border text-xs",
-            !asChannel ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
-          )}
-        >
-          Este clip
-        </button>
-        <button
-          type="button"
-          onClick={() => setAsChannel(true)}
-          className={cn(
-            "h-10 rounded-md border text-xs",
-            asChannel ? "border-accent bg-accent text-accent-ink" : "border-line text-muted",
-          )}
-        >
-          Canal nuevo
-        </button>
-      </div>
       {shown.map((group) => (
         <div key={group}>
           <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">{group}</h3>
@@ -568,20 +531,7 @@ function EffectPane() {
                   <button
                     key={item.id}
                     type="button"
-                    onPointerDown={(event) => {
-                      if (item.id === "none") return;
-                      startLibraryDrag(event.nativeEvent, "effect", (hit) => {
-                        useEditor.getState().placeAdjust("effect", item.id, item.name, hit.time);
-                      });
-                    }}
-                    onClick={() => {
-                      if (eatenClick()) return;
-                      if (asChannel || item.id === "none") {
-                        if (item.id !== "none") useEditor.getState().placeAdjust("effect", item.id, item.name, playback.time, true);
-                        return;
-                      }
-                      setEffect(item.id);
-                    }}
+                    {...fxProps({ kind: "effect", id: item.id, name: item.name }, (hit) => useEditor.getState().placeAdjust("effect", item.id, item.name, hit.time), "effect")}
                     data-fx={item.id}
                     className={cn(
                       "overflow-hidden rounded-md border text-left",
@@ -642,7 +592,7 @@ function TransitionPane() {
       <div>
         <h2 className="text-sm font-semibold text-fg">Transiciones</h2>
         <p className="mt-1 text-sm text-muted">
-          Suéltala en el corte, o toca el + entre dos clips. El fundido entra al inicio del clip de la derecha.
+          Clic para ver cómo queda; arrástrala al corte entre dos clips para usarla. El fundido entra al inicio del clip de la derecha.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -652,20 +602,7 @@ function TransitionPane() {
             <button
               key={item.id}
               type="button"
-              onPointerDown={(event) => {
-                if (item.id === "none") return;
-                startLibraryDrag(event.nativeEvent, "transition", (hit) => {
-                  useEditor.getState().placeItem(
-                    { kind: "transition", id: item.id, name: item.name },
-                    hit.trackId,
-                    hit.time,
-                  );
-                });
-              }}
-              onClick={() => {
-                if (eatenClick()) return;
-                setTransition(item.id);
-              }}
+              {...fxProps({ kind: "transition", id: item.id, name: item.name }, item.id === "none" ? null : (hit) => useEditor.getState().placeItem({ kind: "transition", id: item.id, name: item.name }, hit.trackId, hit.time), "transition")}
               className={cn(
                 "h-11 rounded-md border text-sm",
                 active ? "border-accent bg-accent/15 text-fg" : "border-line bg-sunken text-muted",

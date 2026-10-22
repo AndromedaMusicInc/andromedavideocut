@@ -10,6 +10,7 @@ import {
   login,
   logout,
   openExternal,
+  useUsage,
   testSession,
   useAi,
   AiError,
@@ -258,6 +259,7 @@ export function SettingsDialog() {
             La IA usa tu propia cuenta de Grok con suscripción (SuperGrok, X Premium+ o X Subscription). Sin conectar, el editor funciona completo; solo la IA
             queda bloqueada. {desktop ? "La sesión se guarda cifrada en este equipo." : `${DESKTOP_ONLY_MSG}.`}
           </p>
+          <UsageBar className="mt-2" />
           <p data-ai-status="" className="mt-2 text-sm text-fg">
             {!desktop ? `🔒 ${DESKTOP_ONLY_MSG}` : connected ? `✅ Conectado como ${name || "tu cuenta de Grok"}` : "🔒 Sin conectar"}
           </p>
@@ -299,6 +301,43 @@ export function SettingsDialog() {
           ) : null}
         </section>
       </div>
+    </div>
+  );
+}
+
+
+/** Barra de uso semanal de IA. Fuente: contador local de esta app (xAI no da cuota semanal). */
+export function UsageBar({ className }: { className?: string }) {
+  const connected = useAi((s) => s.connected);
+  const usage = useUsage((s) => s.usage);
+  const bump = useUsage((s) => s.bump);
+  useEffect(() => bump(), [bump]);
+  const reset = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "short" }).format(new Date(usage.resetAt));
+  if (!connected) {
+    return (
+      <div data-usage-bar="locked" className={cn("rounded-md border border-line bg-sunken p-3 text-xs text-muted", className)}>
+        <p className="font-semibold text-fg">🔒 Uso de Grok esta semana</p>
+        <div className="mt-2 h-2 rounded-full bg-line" />
+        <p className="mt-1.5">Conecta tu cuenta de Grok para ver tu uso.</p>
+      </div>
+    );
+  }
+  // Sin límite semanal real: la barra se llena por días de la semana transcurridos, no por un tope inventado.
+  const elapsed = Math.min(1, Math.max(0, (Date.now() - usage.weekStart) / (usage.resetAt - usage.weekStart)));
+  return (
+    <div data-usage-bar="local" data-usage-count={usage.count} className={cn("rounded-md border border-line bg-sunken p-3 text-xs text-muted", className)}>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-semibold text-fg">Uso de Grok esta semana</p>
+        <p className="tabular-nums text-fg"><b>{usage.count}</b> {usage.count === 1 ? "pedido" : "pedidos"}</p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-line" title="Semana transcurrida">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(elapsed * 100)}%` }} />
+      </div>
+      <p className="mt-1.5">Uso desde esta app · se reinicia el {reset}. La barra muestra la semana transcurrida.</p>
+      {usage.minute ? (
+        <p data-usage-minute="" className="mt-1">Límite de xAI por minuto (dato real de xAI): quedan {usage.minute.remaining} de {usage.minute.limit} pedidos.</p>
+      ) : null}
+      <p className="mt-1 text-faint">xAI no publica cuánto te queda de tu plan Grok en la semana, así que no mostramos un límite inventado.</p>
     </div>
   );
 }

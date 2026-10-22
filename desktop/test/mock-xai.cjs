@@ -28,7 +28,7 @@ http.createServer((req, res) => {
     if (u.pathname === "/oauth2/revoke") return j(200, {});
     if (u.pathname.startsWith("/v1/")) {
       if (MODE === "nosub") return j(403, { error: "no subscription" });
-      if (u.pathname === "/v1/models") return j(200, { data: [{ id: "grok" }] });
+      if (u.pathname === "/v1/models") { res.writeHead(200, { "Content-Type": "application/json", "x-ratelimit-limit-requests": "480", "x-ratelimit-remaining-requests": "479" }); return res.end(JSON.stringify({ data: [{ id: "grok" }] })); }
     }
     j(404, {});
   });

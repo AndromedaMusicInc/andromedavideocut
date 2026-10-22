@@ -265,6 +265,17 @@ app.whenReady().then(() => {
   registerXaiIpc(process.env.AVC_TEST_BROWSER ? { testBrowser: (u) => { require("./test/fake-browser.cjs")(u); } } : {});
   protocol.handle("app", serveApp);
   registerProjectsIpc();
+  ipcMain.handle("viewer:displays", () => {
+    const cur = viewer.current();
+    const at = cur ? screen.getDisplayMatching(cur.getBounds()).id : viewer.load().displayId ?? screen.getPrimaryDisplay().id;
+    return screen.getAllDisplays().map((d, i) => ({ id: d.id, label: d.label || `Pantalla ${i + 1}`, primary: d.id === screen.getPrimaryDisplay().id, current: d.id === at, w: d.size.width, h: d.size.height }));
+  });
+  ipcMain.handle("viewer:move", (_e, displayId, fullscreen) => openViewerOn(Number(displayId), Boolean(fullscreen)));
+  ipcMain.handle("viewer:fullscreen", () => {
+    const v = viewer.current();
+    if (v) v.setFullScreen(!v.isFullScreen());
+    return v ? v.isFullScreen() : false;
+  });
   ipcMain.handle("updates:check", () => updates?.check(true));
   ipcMain.handle("file:show", (_e, p) => {
     // Solo rutas absolutas de archivos que existen (las que el usuario importó).

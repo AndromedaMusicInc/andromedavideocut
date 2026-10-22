@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld("avcDesktop", {
       return "";
     }
   },
+  viewer: {
+    displays: () => ipcRenderer.invoke("viewer:displays"),
+    moveTo: (id, fullscreen) => ipcRenderer.invoke("viewer:move", id, Boolean(fullscreen)),
+    toggleFullscreen: () => ipcRenderer.invoke("viewer:fullscreen"),
+  },
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
   showItemInFolder: (p) => ipcRenderer.invoke("file:show", String(p)),
   feedCache: (op, text) => ipcRenderer.invoke("feed:cache", op, text),

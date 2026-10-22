@@ -116,7 +116,6 @@ function Row({ title, icon, children }: { title: string; icon: React.ReactNode; 
 type Section = "inicio" | "plantillas" | "andromeda" | "biblioteca";
 type OpenFn = (p: ProjectMeta, tool?: ToolId) => void;
 const GOLD = "#D4AF37";
-const PURPLE = "#7B3FE4";
 
 function useFeed() {
   const [state, setState] = useState<{ feed: Feed; origin: FeedOrigin } | null | "loading">("loading");
@@ -126,19 +125,20 @@ function useFeed() {
   return state;
 }
 
-function BigFeedCard({ item, kind }: { item: FeedItem; kind: "release" | "playlist" }) {
+function RailItem({ item, kind }: { item: FeedItem; kind: "release" | "playlist" }) {
   const [broken, setBroken] = useState(false);
   return (
-    <button type="button" data-feed-item={kind} onClick={() => openLink(item.link)} title={`${item.title} · abrir en Spotify`} className="group flex w-[220px] shrink-0 flex-col overflow-hidden rounded-xl border border-[#23232F] bg-[#15151F] text-left hover:border-[#D4AF37]/60">
-      <span className="relative block aspect-[16/10] overflow-hidden bg-gradient-to-br from-[#7B3FE4]/40 to-[#0B0B12]">
-        {item.image && !broken ? <img src={item.image} alt="" loading="lazy" onError={() => setBroken(true)} className="size-full object-cover transition group-hover:scale-105" /> : null}
-        <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold" style={{ color: GOLD }}>{kind === "release" ? "LANZAMIENTO" : "PLAYLIST"}</span>
-      </span>
-      <span className="flex flex-col gap-0.5 p-2.5">
-        <span className="truncate text-sm font-semibold text-white">{item.title}</span>
-        <span className="truncate text-xs text-[#8A8A9A]">{kind === "playlist" && item.tracks ? `${item.tracks} canciones · ${item.artist ?? ""}` : (item.artist ?? "")}</span>
-      </span>
-    </button>
+    <li>
+      <button type="button" data-feed-item={kind} onClick={() => openLink(item.link)} title={`${item.title} · abrir en Spotify`} className="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-[#15151F]">
+        <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-md bg-gradient-to-br from-[#7B3FE4]/40 to-[#0B0B12]">
+          {item.image && !broken ? <img src={item.image} alt="" loading="lazy" onError={() => setBroken(true)} className="size-full object-cover" /> : <Music2 className="size-4" style={{ color: GOLD }} />}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-semibold text-white">{item.title}</span>
+          <span className="block truncate text-[11px] text-[#8A8A9A]">{kind === "release" ? "Lanzamiento" : "Playlist"}{item.artist ? ` · ${item.artist}` : ""}</span>
+        </span>
+      </button>
+    </li>
   );
 }
 
@@ -258,7 +258,7 @@ function Projects({ projects, onOpen, refresh, title = "Proyectos" }: { projects
       {projects === null ? (
         <p className="mt-3 text-sm text-muted">Cargando…</p>
       ) : list.length === 0 ? (
-        <p data-empty="" className="mt-6 text-center text-sm text-[#8A8A9A]">{trash ? "La papelera está vacía." : q ? "Ningún proyecto con ese nombre." : "Todavía no tienes proyectos. Toca Crear proyecto."}</p>
+        <p data-empty="" className="mt-6 text-center text-sm text-[#8A8A9A]">{trash ? "La papelera está vacía." : q ? "Ningún proyecto con ese nombre." : "Todavía no tienes proyectos. Toca Nuevo proyecto."}</p>
       ) : (
         <ul data-projects="" className={cn("mt-3", view === "grid" ? "grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-x-3 gap-y-4" : "flex flex-col")}>
           {list.map((p) => <ProjectTile key={`${p.id}-${p.updatedAt}-${p.trashedAt ?? 0}`} p={p} view={view} trash={trash} onOpen={() => onOpen(p)} onChanged={refresh} />)}
@@ -321,44 +321,56 @@ export function Welcome({ onOpen }: { onOpen: OpenFn }) {
       </aside>
       <main className="min-w-0 flex-1 overflow-y-auto px-6 pb-10 pt-5">
         {section === "inicio" ? (
-          <>
-            <button type="button" data-new-project="" onClick={() => setCreating("vacio")} className="group relative grid h-36 w-full place-items-center overflow-hidden rounded-2xl text-white shadow-[0_8px_32px_rgba(123,63,228,0.25)]" style={{ background: `linear-gradient(110deg, ${PURPLE} 0%, #3b1f8a 38%, #0f5f6a 72%, #00d4c8 100%)` }}>
-              <span className="pointer-events-none absolute inset-0 opacity-40" style={{ background: "radial-gradient(circle at 80% 20%, rgba(212,175,55,.55), transparent 45%)" }} />
-              <span className="relative flex items-center gap-3 text-2xl font-bold"><span className="grid size-9 place-items-center rounded-lg bg-[#0B0B12] text-white transition group-hover:scale-110"><Plus className="size-5" /></span> Crear proyecto</span>
-            </button>
-            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
-              {[
-                { id: "plantillas", t: "Plantillas", d: "Empieza con un ejemplo editable", icon: <LayoutTemplate className="size-5" />, go: () => setCreating("ejemplo") },
-                { id: "tempo", t: "Modo Tempo / BPM", d: "Cortes al ritmo de tu canción", icon: <Activity className="size-5" />, go: () => void quick("ejemplo", "reel", "Reel al ritmo") },
-                { id: "karaoke", t: "Karaoke / Letras", d: "Pega la letra y arma el reel", icon: <Mic2 className="size-5" />, go: () => void quick("ejemplo", "reel", "Karaoke") },
-                { id: "importar", t: "Importar medios", d: "Videos, fotos y música", icon: <Upload className="size-5" />, go: () => void quick("vacio", "media", "Proyecto nuevo") },
-              ].map((c) => (
-                <button key={c.id} type="button" data-quick={c.id} onClick={c.go} className="flex min-h-24 flex-col items-start gap-1 rounded-xl border border-[#23232F] bg-[#15151F] p-3 text-left hover:border-[#D4AF37]/60">
-                  <span className="grid size-9 place-items-center rounded-lg bg-[#0B0B12]" style={{ color: GOLD }}>{c.icon}</span>
-                  <span className="text-sm font-semibold text-white">{c.t}</span>
-                  <span className="text-xs text-[#8A8A9A]">{c.d}</span>
+          <div data-home-layout="v102" className="flex flex-col gap-6 xl:flex-row">
+            <div className="min-w-0 flex-1">
+              <header className="flex flex-wrap items-center gap-3">
+                <div className="mr-auto">
+                  <h1 className="text-lg font-bold text-white">Tu estudio</h1>
+                  <p className="text-xs text-[#8A8A9A]">Retoma un proyecto o empieza uno nuevo.</p>
+                </div>
+                <button type="button" data-new-project="" onClick={() => setCreating("vacio")} className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-[#0B0B12] shadow-[0_4px_16px_rgba(212,175,55,0.25)] hover:brightness-110" style={{ background: GOLD }}>
+                  <Plus className="size-4" /> Nuevo proyecto
                 </button>
-              ))}
-              <button type="button" data-quick="ia" onClick={() => ai.openWizard()} className="relative flex min-h-24 flex-col items-start gap-1 rounded-xl border border-[#7B3FE4]/50 bg-gradient-to-br from-[#7B3FE4]/25 to-[#15151F] p-3 text-left hover:border-[#7B3FE4]">
-                <span className="grid size-9 place-items-center rounded-lg bg-[#0B0B12] text-[#B794FF]"><Sparkles className="size-5" /></span>
-                <span className="text-sm font-semibold text-white">IA con Grok</span>
-                <span className="text-xs text-[#8A8A9A]">{ai.connected ? `Conectado: ${ai.name || "tu cuenta"}` : "Conecta tu cuenta de Grok"}</span>
-                {!ai.connected ? <Lock aria-label="Bloqueado" className="absolute right-3 top-3 size-4 text-[#B794FF]" /> : null}
-              </button>
+              </header>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {[
+                  { id: "plantillas", t: "Plantilla", icon: <LayoutTemplate className="size-4" />, go: () => setCreating("ejemplo") },
+                  { id: "tempo", t: "Tempo / BPM", icon: <Activity className="size-4" />, go: () => void quick("ejemplo", "reel", "Reel al ritmo") },
+                  { id: "karaoke", t: "Karaoke / Letras", icon: <Mic2 className="size-4" />, go: () => void quick("ejemplo", "reel", "Karaoke") },
+                  { id: "importar", t: "Importar medios", icon: <Upload className="size-4" />, go: () => void quick("vacio", "media", "Proyecto nuevo") },
+                ].map((c) => (
+                  <button key={c.id} type="button" data-quick={c.id} onClick={c.go} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#23232F] bg-[#15151F] px-3 text-xs font-semibold text-white hover:border-[#D4AF37]/60">
+                    <span style={{ color: GOLD }}>{c.icon}</span>{c.t}
+                  </button>
+                ))}
+                <button type="button" data-quick="ia" onClick={() => ai.openWizard()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#7B3FE4]/50 bg-[#7B3FE4]/15 px-3 text-xs font-semibold text-white hover:border-[#7B3FE4]">
+                  <Sparkles className="size-4 text-[#B794FF]" /> IA con Grok {!ai.connected ? <Lock aria-label="Bloqueado" className="size-3.5 text-[#B794FF]" /> : <span className="text-[#8A8A9A]">· {ai.name || "conectado"}</span>}
+                </button>
+              </div>
+              <div className="-mt-4">
+                <Projects projects={projects} onOpen={onOpen} refresh={refresh} title="Proyectos recientes" />
+              </div>
             </div>
-            <section className="mt-8">
+            <aside data-feed-rail="" className="w-full shrink-0 rounded-2xl border border-[#23232F] bg-[#11111A] p-4 xl:w-80">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-white">Lo nuevo de Andromeda</h2>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><img src={`${BASE}brand/mark.png`} alt="" className="size-4 object-contain" /> Lo nuevo de Andromeda</h2>
                 <button type="button" onClick={() => setSection("andromeda")} className="text-xs hover:underline" style={{ color: GOLD }}>Ver todo</button>
               </div>
               {feed === "loading" ? <p className="mt-2 text-sm text-muted">Cargando…</p> : feed ? (
-                <div data-feed-origin={feed.origin} className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                  {feedItems.map(({ i, k }) => <BigFeedCard key={i.link} item={i} kind={k} />)}
-                </div>
+                <ul data-feed-origin={feed.origin} className="mt-3 flex flex-col gap-2">
+                  {feed.feed.news.slice(0, 2).map((n) => (
+                    <li key={n.title} data-feed-item="news" className="rounded-lg bg-[#15151F] p-2.5">
+                      <button type="button" onClick={() => openLink(n.link)} className="text-left">
+                        <span className="block text-xs font-semibold text-white">{n.title}</span>
+                        <span className="mt-0.5 line-clamp-2 block text-[11px] text-[#8A8A9A]">{n.text}</span>
+                      </button>
+                    </li>
+                  ))}
+                  {feedItems.slice(0, 8).map(({ i, k }) => <RailItem key={i.link} item={i} kind={k} />)}
+                </ul>
               ) : <p className="mt-2 text-sm text-muted">Sin novedades por ahora.</p>}
-            </section>
-            <Projects projects={projects} onOpen={onOpen} refresh={refresh} />
-          </>
+            </aside>
+          </div>
         ) : null}
         {section === "plantillas" ? (
           <section>
