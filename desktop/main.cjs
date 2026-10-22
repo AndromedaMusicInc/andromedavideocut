@@ -6,6 +6,7 @@ const { registerProjectsIpc } = require("./projects.cjs");
 const viewer = require("./viewer.cjs");
 // Las 0.x son betas; 1.0.0 será el lanzamiento oficial.
 const versionLabel = () => (app.getVersion().startsWith("0.") ? `Beta ${app.getVersion()}` : app.getVersion());
+const INSTAGRAM_URL = "https://www.instagram.com/andromedavideocut/";
 const appTitle = () => `AndromedaVideoCut · ${versionLabel()}`;
 const { setupUpdater } = require("./updater.cjs");
 const path = require("path");
@@ -218,15 +219,20 @@ function buildMenu() {
         { type: "separator" },
         { label: "Sitio de Andromeda Music Inc", click: () => shell.openExternal("https://andromedamusicinc.com") },
         {
+          label: "Instagram @andromedavideocut",
+          click: () => shell.openExternal(INSTAGRAM_URL),
+        },
+        { type: "separator" },
+        {
           label: "Acerca de AndromedaVideoCut",
           click: () =>
             dialog.showMessageBox(BrowserWindow.getAllWindows()[0], {
               type: "info",
               title: "Acerca de",
               message: `AndromedaVideoCut ${versionLabel()}`,
-              detail: `Editor de video de Andromeda Music Inc.\nVersión ${versionLabel()}${app.getVersion().startsWith("0.") ? " (beta de prueba; la 1.0.0 será el lanzamiento oficial)" : ""} · Electron ${process.versions.electron} · Chromium ${process.versions.chrome}\n© 2026 Andromeda Music Inc. Todos los derechos reservados.`,
-              buttons: ["Aceptar"],
-            }),
+              detail: `Editor de video de Andromeda Music Inc.\nVersión ${versionLabel()}${app.getVersion().startsWith("0.") ? " (beta de prueba; la 1.0.0 será el lanzamiento oficial)" : ""} · Electron ${process.versions.electron} · Chromium ${process.versions.chrome}\nInstagram: @andromedavideocut · instagram.com/andromedavideocut\n© 2026 Andromeda Music Inc. Todos los derechos reservados.`,
+              buttons: ["Aceptar", "Instagram @andromedavideocut"],
+            }).then((r) => { if (r.response === 1) shell.openExternal(INSTAGRAM_URL); }),
         },
       ],
     },

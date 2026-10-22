@@ -29,3 +29,7 @@ Configuración de Windows > Aplicaciones > AndromedaVideoCut > Desinstalar
 
 SOPORTE
 andromedamusicinc.com
+
+SÍGUENOS
+Instagram: @andromedavideocut - https://www.instagram.com/andromedavideocut/
+(también en la app: Inicio > @andromedavideocut y menú Ayuda > Instagram)

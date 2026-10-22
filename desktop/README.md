@@ -78,7 +78,8 @@ instalada aparece en **Ayuda → Acerca de**. Tus proyectos y ajustes se conserv
 (o *Panel de control → Programas → Desinstalar un programa*). Aparece como "AndromedaVideoCut Beta 0.0.2", de Andromeda Music Inc.
 
 ## Soporte
-Escríbenos desde [andromedamusicinc.com](https://andromedamusicinc.com). Incluye tu versión (Ayuda → Acerca de) y,
+Escríbenos desde [andromedamusicinc.com](https://andromedamusicinc.com) y síguenos en Instagram:
+[@andromedavideocut](https://www.instagram.com/andromedavideocut/) (en la app: Inicio → @andromedavideocut o Ayuda → Instagram). Incluye tu versión (Ayuda → Acerca de) y,
 si puedes, una captura del problema.
 
 ---

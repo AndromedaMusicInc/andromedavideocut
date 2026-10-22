@@ -4,3 +4,5 @@ export const APP_VERSION: string = __APP_VERSION__;
 export const IS_BETA = /^0\./.test(APP_VERSION);
 export const VERSION_LABEL = IS_BETA ? `Beta ${APP_VERSION}` : APP_VERSION;
 export const APP_TITLE = `AndromedaVideoCut · ${VERSION_LABEL}`;
+export const INSTAGRAM_URL = "https://www.instagram.com/andromedavideocut/";
+export const INSTAGRAM_HANDLE = "@andromedavideocut";

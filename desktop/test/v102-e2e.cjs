@@ -33,6 +33,14 @@ const launch = async () => {
   const ver = await app.evaluate(({ app, BrowserWindow }) => ({ v: app.getVersion(), t: BrowserWindow.getAllWindows()[0].getTitle() }));
   check("versión 0.0.2 y título 'Beta 0.0.2'", ver.v === "0.0.2" && ver.t === "AndromedaVideoCut · Beta 0.0.2", JSON.stringify(ver));
   check("portada muestra Beta 0.0.2", /beta 0\.0\.2/i.test(await w.textContent("[data-version-label]")));
+  await app.evaluate(({ shell }) => { global.__ig = []; shell.openExternal = async (u) => { global.__ig.push(u); }; });
+  check("Instagram: texto visible '@andromedavideocut'", (await w.textContent("[data-instagram]")).trim() === "@andromedavideocut");
+  await w.click("[data-instagram]"); await sleep(300);
+  let ig = await app.evaluate(() => global.__ig);
+  check("Instagram (inicio): clic → shell.openExternal con la URL exacta", JSON.stringify(ig) === JSON.stringify(["https://www.instagram.com/andromedavideocut/"]), JSON.stringify(ig));
+  await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((i) => i.label === "Ayuda").submenu.items.find((i) => i.label === "Instagram @andromedavideocut").click());
+  ig = await app.evaluate(() => global.__ig);
+  check("Instagram (Ayuda): abre la URL exacta", ig.length === 2 && ig[1] === "https://www.instagram.com/andromedavideocut/", JSON.stringify(ig));
   check("migración: aparece el proyecto de la 1.0.0", names.includes("Reel de Wilhelm 1.0.0"), JSON.stringify(names));
   check("migración: la clave vieja se conserva", await w.evaluate(() => !!localStorage.getItem("framecut.project.v1")));
   const idx = JSON.parse(fs.readFileSync(path.join(UD, "projects/index.json"), "utf8"));

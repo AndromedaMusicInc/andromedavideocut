@@ -7,7 +7,7 @@ import { ASPECTS, type AspectId } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
 import { Activity, ArchiveRestore, Copy, Download, ExternalLink, Film, FolderOpen, House, LayoutGrid, LayoutTemplate, List, ListMusic, Lock, Mic2, Music2, Newspaper, Pencil, Play, Plus, RefreshCw, Search, Settings, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { VERSION_LABEL } from "@/lib/version";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL, VERSION_LABEL } from "@/lib/version";
 
 const BASE = import.meta.env.BASE_URL;
 const ASPECT_ORDER: AspectId[] = ["9:16", "16:9", "1:1", "4:5"];
@@ -320,6 +320,23 @@ export function Welcome({ onOpen }: { onOpen: OpenFn }) {
           >
             <RefreshCw className="size-4" /> Buscar actualizaciones
           </button>
+          <a
+            data-instagram=""
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              const d = (window as unknown as { avcDesktop?: { openExternal(u: string): Promise<void> } }).avcDesktop;
+              e.preventDefault();
+              if (d) void d.openExternal(INSTAGRAM_URL);
+              else window.open(INSTAGRAM_URL, "_blank", "noopener,noreferrer");
+            }}
+            title="Síguenos en Instagram"
+            className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-[#C9C9D4] hover:bg-[#15151F]"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg>
+            {INSTAGRAM_HANDLE}
+          </a>
           {updMsg ? <p role="status" className="px-2.5 text-[11px] text-[#8A8A9A]">{updMsg}</p> : null}
         </div>
       </aside>
