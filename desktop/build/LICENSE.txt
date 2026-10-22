@@ -1,0 +1,26 @@
+CONTRATO DE LICENCIA DE USUARIO FINAL — AndromedaVideoCut
+Copyright (c) 2026 Andromeda Music Inc. Todos los derechos reservados.
+
+LEA ESTE CONTRATO ANTES DE INSTALAR. Al instalar o usar AndromedaVideoCut ("el Software") usted acepta estos términos. Si no los acepta, no lo instale.
+
+1. LICENCIA. Andromeda Music Inc ("Andromeda") le otorga una licencia personal, no exclusiva, intransferible y revocable para instalar y usar el Software en sus equipos con el fin de editar y exportar sus propios videos.
+
+2. PROPIEDAD. El Software es propietario. Andromeda conserva todos los derechos, títulos e intereses sobre el Software, su código, su diseño, sus marcas y logotipos. Esta licencia no le transfiere ninguna propiedad.
+
+3. RESTRICCIONES. Usted no puede: (a) copiar, distribuir, vender, alquilar o sublicenciar el Software; (b) modificar, descompilar, desensamblar o aplicar ingeniería inversa, salvo lo que la ley permita expresamente; (c) quitar avisos de derechos de autor o marcas; (d) usar el Software para fines ilícitos.
+
+4. SU CONTENIDO. Los videos, audios, imágenes y proyectos que usted cree o importe son suyos. El Software los procesa en su equipo y no los envía a Andromeda.
+
+5. ACTUALIZACIONES. El Software puede buscar actualizaciones en internet y le preguntará antes de descargarlas e instalarlas. Las actualizaciones se rigen por este contrato salvo que vengan con otro.
+
+6. COMPONENTES DE TERCEROS. El Software incluye componentes de código abierto (por ejemplo Electron, Chromium, React y FFmpeg/AAC vía Mediabunny) sujetos a sus propias licencias, que se incluyen con el Software.
+
+7. SIN GARANTÍA. EL SOFTWARE SE ENTREGA "TAL CUAL", SIN GARANTÍAS DE NINGÚN TIPO, EXPRESAS O IMPLÍCITAS, INCLUIDAS LAS DE COMERCIABILIDAD, IDONEIDAD PARA UN FIN DETERMINADO Y NO INFRACCIÓN.
+
+8. LIMITACIÓN DE RESPONSABILIDAD. EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY, ANDROMEDA NO SERÁ RESPONSABLE POR DAÑOS INDIRECTOS, INCIDENTALES, ESPECIALES O CONSECUENTES, NI POR PÉRDIDA DE DATOS, ARCHIVOS O GANANCIAS DERIVADOS DEL USO DEL SOFTWARE.
+
+9. TERMINACIÓN. Esta licencia termina automáticamente si usted incumple estos términos. Al terminar debe desinstalar el Software.
+
+10. LEY APLICABLE. Este contrato se rige por las leyes del lugar de domicilio de Andromeda Music Inc, sin perjuicio de los derechos irrenunciables que la ley le otorgue como consumidor.
+
+Contacto: Andromeda Music Inc — andromedamusicinc.com

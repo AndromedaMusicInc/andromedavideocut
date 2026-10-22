@@ -3,14 +3,18 @@
   "productName": "AndromedaVideoCut",
   "version": "1.0.0",
   "description": "AndromedaVideoCut — editor de video de Andromeda Music Inc. para escritorio",
-  "author": "Andromeda Music Inc.",
-  "license": "UNLICENSED",
+  "author": {
+    "name": "Andromeda Music Inc",
+    "url": "https://andromedamusicinc.com"
+  },
+  "license": "SEE LICENSE IN build/LICENSE.txt",
   "private": true,
   "main": "main.cjs",
   "scripts": {
     "prepare-app": "node scripts/copy-build.cjs",
     "start": "npm run prepare-app && electron .",
-    "dist:win": "npm run prepare-app && electron-builder --win nsis --x64"
+    "dist:win": "npm run prepare-app && electron-builder --win nsis --x64 --publish never",
+    "release:win": "npm run prepare-app && electron-builder --win nsis --x64 --publish always"
   },
   "build": {
     "appId": "com.andromedamusicinc.videocut",
@@ -23,8 +27,12 @@
     },
     "files": [
       "main.cjs",
+      "updater.cjs",
+      "xai-oauth.cjs",
+      "preload.cjs",
       "app/**/*",
-      "package.json"
+      "package.json",
+      "xai-oauth.json"
     ],
     "win": {
       "target": [
@@ -35,23 +43,66 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "legalTrademarks": "Andromeda Music Inc"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "AndromedaVideoCut",
+      "license": "build/LICENSE.txt",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
-      "language": "3082"
-    }
+      "installerHeader": "build/installerHeader.bmp",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/uninstallerSidebar.bmp",
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "menuCategory": "Andromeda Music Inc",
+      "shortcutName": "AndromedaVideoCut",
+      "uninstallDisplayName": "AndromedaVideoCut ${version}",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": false,
+      "installerLanguages": [
+        "es_ES"
+      ],
+      "language": "3082",
+      "differentialPackage": true,
+      "include": "build/installer.nsh"
+    },
+    "copyright": "© 2026 Andromeda Music Inc",
+    "extraFiles": [
+      {
+        "from": "build/README.txt",
+        "to": "README.txt"
+      },
+      {
+        "from": "build/LICENSE.txt",
+        "to": "LICENSE.txt"
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "AndromedaMusicInc",
+        "repo": "andromedavideocut",
+        "releaseType": "release"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^45.0.0",
     "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "homepage": "https://andromedamusicinc.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndromedaMusicInc/andromedavideocut.git"
   }
 }
