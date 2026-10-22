@@ -1,0 +1,7 @@
+AndromedaVideoCut incluye FFmpeg (https://ffmpeg.org) en su variante LGPL v2.1 o posterior, enlazado dinámicamente
+(ffmpeg.exe, ffprobe.exe y las DLL avcodec/avformat/avutil/swscale/swresample/avfilter/avdevice).
+Compilación: BtbN/FFmpeg-Builds, rama n8.1, "win64-lgpl-shared" (https://github.com/BtbN/FFmpeg-Builds).
+Código fuente correspondiente: https://github.com/FFmpeg/FFmpeg (etiqueta n8.1) y los scripts de compilación de BtbN.
+Incluye OpenH264 (Cisco, licencia BSD) para crear los proxies H.264. FFmpeg es marca de Fabrice Bellard.
+La licencia completa está en LICENSE-FFmpeg-LGPL.txt en esta carpeta. Puedes reemplazar estas DLL por otra
+compilación compatible de FFmpeg.

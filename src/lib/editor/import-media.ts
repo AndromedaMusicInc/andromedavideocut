@@ -225,7 +225,7 @@ export async function ingestFile(file: File): Promise<IngestResult> {
   logImport({ ...base, ...(info ?? {}), resultado: "ok", duration });
   return {
     blob: file,
-    asset: { id: uid("m"), name, kind, duration: Math.max(0.3, duration), url, thumb, path, codec: info ? (kind === "audio" ? describeAudio(info, file.name) : describe(info, file.name)) : undefined, hasAudio: info && info.source !== "extension" ? Boolean(info.acodec) : undefined },
+    asset: { id: uid("m"), name, kind, duration: Math.max(0.3, duration), url, thumb, path, codec: info ? (kind === "audio" ? describeAudio(info, file.name) : describe(info, file.name)) : undefined, hasAudio: kind === "audio" ? undefined : info && info.source !== "extension" ? Boolean(info.acodec) : undefined },
   };
 }
 

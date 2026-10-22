@@ -9,6 +9,32 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.3] — 2026-10-22 · Beta
+Beta de arreglos de importación: **videos y audios de la PC que no se veían ni sonaban**. La app muestra "Beta 0.0.3".
+### Arreglado
+- **Los videos importados no se veían en el visor.** Causa: el visor dibuja desde un grupo de reproductores
+  (`pool`) que nunca se llenaba — nadie llamaba a `pool.warm()` al importar ni al abrir un proyecto — así que el clip
+  aparecía en Medios y en la línea de tiempo pero el visor lo dibujaba en blanco. Ahora cada medio importado o
+  restaurado tiene su reproductor.
+- **Los audios importados no sonaban hasta reabrir el proyecto**: el audio solo se decodificaba al abrir el proyecto,
+  no al importar. Ahora se decodifica al importar (archivo de audio o pista de un video).
+- Archivos de audio sin tipo MIME en Windows (FLAC, Opus, WMA, AC3, CAF…) se tomaban como video. Ahora se detectan
+  por la extensión.
+- **Tarjeta del proyecto en Inicio** decía "0.0K | 00:00" sin miniatura: ahora muestra tamaño, duración reales y la
+  miniatura del primer clip.
+### Agregado
+- **App de PC: FFmpeg 8.1 LGPL incluido.** Lo que Chromium no puede leer (HEVC 8/10-bit de Nikon y celulares, ProRes,
+  DNxHD/DNxHR, MXF, AVCHD/MTS, MKV con HEVC, AVI, WMV, MPEG-2) se convierte solo, en segundo plano y con barra de
+  progreso, a un **proxy H.264** para editar. **La exportación usa el original** (copia maestra a resolución completa).
+- **Audio en todos los formatos**: WAV 16/24/32f de 44.1 a 192 kHz, mono/estéreo/5.1, RF64/BWF, MP3 CBR/VBR, AAC/M4A,
+  FLAC, Ogg, Opus directo; ALAC, AIFF, WMA, AC3 y CAF se convierten a WAV 48 kHz. Forma de onda real en Medios y en la
+  línea de tiempo. Si la conversión falla, aviso visible. Aviso de WAV/RF64 incompleto.
+- **RED R3D**: si tienes REDCINE-X PRO instalado se convierte con REDline; si no, mensaje claro de qué hacer.
+  **Nikon N-RAW y ProRes RAW**: mensaje con la recomendación de convertir con NX Studio o DaVinci Resolve.
+- **Web**: aviso "más formatos en la versión de PC" y mensaje claro en lugar de un clip en blanco.
+- **Registro de importación** (códec, contenedor, resultado y error): Ayuda → Abrir registro de importación de medios.
+- Matriz completa en `docs/FORMATOS.md`.
+
 ## [0.0.2] — 2026-10-22 · Beta (antes 1.0.2)
 Beta de arreglos (sin funciones grandes nuevas). La app y el instalador muestran **"Beta 0.0.2"**.
 ### Cambiado

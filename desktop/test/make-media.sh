@@ -55,3 +55,4 @@ h=b'RF64'+struct.pack('<I',0xFFFFFFFF)+b'WAVE'+b'ds64'+struct.pack('<I',28)+stru
 open(sys.argv[1],'wb').write(h)
 PY
 du -sh "$V" "$A"; ls "$V" "$A" | wc -l
+head -c 50000 /dev/urandom > "$A/corrupto.mp3"  # debe dar error visible
