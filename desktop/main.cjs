@@ -4,6 +4,9 @@ const { app, BrowserWindow, shell, Menu, protocol, net, dialog, ipcMain, screen 
 const { registerXaiIpc } = require("./xai-oauth.cjs");
 const { registerProjectsIpc } = require("./projects.cjs");
 const viewer = require("./viewer.cjs");
+// Las 0.x son betas; 1.0.0 será el lanzamiento oficial.
+const versionLabel = () => (app.getVersion().startsWith("0.") ? `Beta ${app.getVersion()}` : app.getVersion());
+const appTitle = () => `AndromedaVideoCut · ${versionLabel()}`;
 const { setupUpdater } = require("./updater.cjs");
 const path = require("path");
 const { pathToFileURL } = require("url");
@@ -111,7 +114,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 640,
-    title: "AndromedaVideoCut",
+    title: appTitle(),
     backgroundColor: "#0c0c0e",
     icon: path.join(ROOT, "brand", "favicon-180.png"),
     autoHideMenuBar: false,
@@ -220,8 +223,8 @@ function buildMenu() {
             dialog.showMessageBox(BrowserWindow.getAllWindows()[0], {
               type: "info",
               title: "Acerca de",
-              message: `AndromedaVideoCut ${app.getVersion()}`,
-              detail: `Editor de video de Andromeda Music Inc.\nVersión ${app.getVersion()} · Electron ${process.versions.electron} · Chromium ${process.versions.chrome}\n© 2026 Andromeda Music Inc. Todos los derechos reservados.`,
+              message: `AndromedaVideoCut ${versionLabel()}`,
+              detail: `Editor de video de Andromeda Music Inc.\nVersión ${versionLabel()}${app.getVersion().startsWith("0.") ? " (beta de prueba; la 1.0.0 será el lanzamiento oficial)" : ""} · Electron ${process.versions.electron} · Chromium ${process.versions.chrome}\n© 2026 Andromeda Music Inc. Todos los derechos reservados.`,
               buttons: ["Aceptar"],
             }),
         },

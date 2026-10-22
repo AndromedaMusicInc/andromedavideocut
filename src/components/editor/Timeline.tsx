@@ -427,7 +427,7 @@ function Joins({ trackId, pps }: { trackId: string; pps: number }) {
       {marks.map((clip) => {
         const on = clip.transition !== "none";
         const named = TRANSITIONS.find((item) => item.id === clip.transition)?.name ?? "Corte";
-        // 1.0.2: sin "+" que agrega solo; el fundido se pone arrastrándolo desde Fundidos.
+        // 0.0.2 (beta): sin "+" que agrega solo; el fundido se pone arrastrándolo desde Fundidos.
         if (!on) return null;
         return (
           <button

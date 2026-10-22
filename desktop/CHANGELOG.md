@@ -3,8 +3,14 @@
 Todas las versiones de AndromedaVideoCut para escritorio. Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 versionado [SemVer](https://semver.org/lang/es/).
 
-## [1.0.2] — 2026-10-22
-Versión de arreglos (sin funciones grandes nuevas).
+> **Numeración:** la **1.0.0 será el lanzamiento oficial**. Hasta entonces las versiones son **betas 0.0.x**.
+> Las primeras pruebas publicadas como 1.0.0 y 1.0.1 se renumeran como betas: **1.0.0 → beta 0.0.0**,
+> **1.0.1 → beta 0.0.1**, y la que iba a ser 1.0.2 es la **beta 0.0.2**. Quien instaló una 1.0.x no recibe la beta
+> por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
+> conservan (carpeta de datos de la app).
+
+## [0.0.2] — 2026-10-22 · Beta (antes 1.0.2)
+Beta de arreglos (sin funciones grandes nuevas). La app y el instalador muestran **"Beta 0.0.2"**.
 ### Cambiado
 - **Icono** con esquinas redondeadas (fondo transparente fuera de la curva) en el instalador, la ventana, la barra de
   tareas y el favicon de la web.
@@ -25,7 +31,7 @@ Versión de arreglos (sin funciones grandes nuevas).
 - Si no se puede guardar (almacenamiento lleno), ahora sale un **aviso visible** en vez de fallar en silencio.
 - Al cerrar la ventana/pestaña o cambiar de proyecto ya **no se pierde el último cambio** (se guarda al instante).
 
-## [1.0.1] — 2026-10-22
+## [0.0.1] — 2026-10-22 · Beta (publicada como 1.0.1, prueba temprana)
 ### Agregado
 - **Varios proyectos**: lista con nombre, formato, miniatura, tamaño, duración y fecha. Crear, renombrar, duplicar,
   buscar, vista de cuadrícula o lista y Papelera con recuperación. En escritorio se guardan en la carpeta de datos de la
@@ -53,7 +59,7 @@ Versión de arreglos (sin funciones grandes nuevas).
 - Proyectos con clips incompletos ya no hacen desaparecer la línea de tiempo al seleccionarlos.
 - La interfaz del editor ya no selecciona texto al arrastrar o con Ctrl+A.
 
-## [1.0.0] — 2026-10-22
+## [0.0.0] · Beta (publicada como 1.0.0, prueba temprana) — 2026-10-22
 Primera versión para Windows.
 
 ### Agregado

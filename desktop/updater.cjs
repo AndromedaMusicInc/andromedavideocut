@@ -20,13 +20,20 @@ function setupUpdater(updater, hooks = {}) {
     return r.response;
   });
   updater.autoDownload = false;
+  // Betas 0.0.x: se publican como release NORMAL (no pre-release) para que 0.0.2 → 0.0.3 se actualice solo.
+  // Si algún día se marcan como pre-release, hay que poner allowPrerelease = true.
+  updater.allowPrerelease = false;
+  // Nunca bajar de versión (un PC con 1.0.x no pasa a 0.0.x: hay que reinstalar a mano).
+  updater.allowDowngrade = false;
   updater.autoInstallOnAppQuit = false;
   let manual = false;
   let busy = false;
 
   const setTitle = (text) => {
     const win = mainWindow();
-    if (win) win.setTitle(text ? `AndromedaVideoCut — ${text}` : "AndromedaVideoCut");
+    const v = app.getVersion();
+    const base = `AndromedaVideoCut · ${v.startsWith("0.") ? `Beta ${v}` : v}`;
+    if (win) win.setTitle(text ? `${base} — ${text}` : base);
   };
 
   updater.on("checking-for-update", () => log("buscando actualizaciones…"));

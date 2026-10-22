@@ -1,10 +1,10 @@
-// 1.0.2 (incluye todo lo de 1.0.1): icono, botón Separar visor con monitores/pantalla completa/acoplar,
+// Beta 0.0.2 (antes 1.0.2) (incluye todo lo de 1.0.1): icono, botón Separar visor con monitores/pantalla completa/acoplar,
 // clic = vista previa, arrastrar = agrega, Ctrl+S guarda en disco, guardado al cambiar de proyecto, aviso si falla.
 // 1.0.1: migración 1.0.0 → proyectos, bienvenida, nuevo/renombrar/duplicar/borrar, guardado en disco,
 // feed (empaquetado y caché), audio (selector, vúmetro, Probar sonido) y exportación MP4 con AAC.
 const { _electron } = require("/tmp/pwe/node_modules/playwright-core");
 const fs = require("fs"); const path = require("path"); const { execFileSync } = require("child_process");
-const OUT = path.resolve(__dirname, "../../preview-shots/v1.0.2/desktop"); fs.mkdirSync(OUT, { recursive: true });
+const OUT = path.resolve(__dirname, "../../preview-shots/v0.0.2/desktop"); fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = []; const check = (n, ok, x = "") => res.push(`${ok ? "OK   " : "FALLA"} ${n}${x ? " — " + x : ""}`);
 const UD = "/tmp/avc-v102"; fs.rmSync(UD, { recursive: true, force: true });
@@ -30,6 +30,9 @@ const launch = async () => {
   ({ app, w } = await launch());
   await w.waitForSelector("[data-project]");
   const names = await w.$$eval("[data-project-name]", (n) => n.map((e) => e.textContent));
+  const ver = await app.evaluate(({ app, BrowserWindow }) => ({ v: app.getVersion(), t: BrowserWindow.getAllWindows()[0].getTitle() }));
+  check("versión 0.0.2 y título 'Beta 0.0.2'", ver.v === "0.0.2" && ver.t === "AndromedaVideoCut · Beta 0.0.2", JSON.stringify(ver));
+  check("portada muestra Beta 0.0.2", /beta 0\.0\.2/i.test(await w.textContent("[data-version-label]")));
   check("migración: aparece el proyecto de la 1.0.0", names.includes("Reel de Wilhelm 1.0.0"), JSON.stringify(names));
   check("migración: la clave vieja se conserva", await w.evaluate(() => !!localStorage.getItem("framecut.project.v1")));
   const idx = JSON.parse(fs.readFileSync(path.join(UD, "projects/index.json"), "utf8"));
@@ -180,7 +183,7 @@ const launch = async () => {
   check("recuerda posición y monitor del visor", vcfg.bounds && vcfg.bounds.x === bounds.x && typeof vcfg.displayId === "number", JSON.stringify(vcfg));
   const menu = await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((i) => i.label === "Ver").submenu.items.map((i) => i.label));
   check("menú Ver: separar visor y elegir pantalla", menu.includes("Separar visor") && menu.includes("Visor en pantalla"), menu.join(" · "));
-  // 1.0.2: clic en biblioteca no agrega; arrastrar sí; Ctrl+S guarda en disco sin cortar.
+  // 0.0.2: clic en biblioteca no agrega; arrastrar sí; Ctrl+S guarda en disco sin cortar.
   check("visor: botón 'Separar visor' en la esquina", await w.isVisible("[data-detach-corner]"));
   const nC = async () => (await w.evaluate(() => window.__avcClips())).length;
   const n0 = await nC();

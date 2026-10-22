@@ -183,7 +183,7 @@ export async function generateVideo(prompt: string, aspect: string, onStatus: (s
 }
 
 
-// ---- Uso semanal (1.0.2) ----
+// ---- Uso semanal (beta 0.0.2) ----
 // xAI no publica una cuota semanal para cuentas Grok (SuperGrok / Premium+) ni un endpoint de uso para
 // sesiones OAuth. Por eso: contador local de pedidos de IA hechos DESDE ESTA APP en la semana (lunes a
 // domingo, hora local) + el límite real por minuto si xAI lo manda en cabeceras x-ratelimit-*.

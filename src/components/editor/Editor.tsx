@@ -143,7 +143,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         fxCount: state.fxCount,
         assets: state.assets,
       });
-      // 1.0.2: si no se pudo guardar (disco/almacenamiento lleno) se avisa, no se calla.
+      // 0.0.2 (beta): si no se pudo guardar (disco/almacenamiento lleno) se avisa, no se calla.
       let failed = false;
       const reportSave = (ok: boolean | undefined) => {
         if (ok === false) {
@@ -268,7 +268,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         event.preventDefault();
         togglePlay();
       } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-        // 1.0.2: Ctrl/Cmd+S guarda (antes cortaba el clip).
+        // 0.0.2 (beta): Ctrl/Cmd+S guarda (antes cortaba el clip).
         event.preventDefault();
         void saveNow.current().then(() => useEditor.getState().tell("Proyecto guardado."));
       } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "s") {

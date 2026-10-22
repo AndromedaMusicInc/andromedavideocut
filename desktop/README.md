@@ -1,5 +1,9 @@
 # AndromedaVideoCut para Windows
 
+> **Beta 0.0.2.** Las 0.0.x son versiones de prueba; la **1.0.0** será el lanzamiento oficial. Si instalaste una
+> prueba numerada 1.0.0 o 1.0.1, desinstálala e instala la beta 0.0.2 a mano (la actualización automática no baja de
+> versión). Tus proyectos se conservan.
+
 Editor de video de **Andromeda Music Inc.** para Reels, TikTok, Shorts y YouTube. Recorta, ajusta el ritmo,
 agrega textos, stickers, filtros y música, y exporta en MP4.
 
@@ -9,7 +13,7 @@ agrega textos, stickers, filtros y música, y exporta en MP4.
 - Internet solo para las actualizaciones, las fuentes de Google y la IA (opcional). Todo lo demás funciona sin conexión.
 
 ## Instalación
-1. Descarga `AndromedaVideoCut-Setup-1.0.0-x64.exe` desde la página de Releases de Andromeda Music Inc.
+1. Descarga `AndromedaVideoCut-Setup-0.0.2-x64.exe` desde la página de Releases de Andromeda Music Inc.
 2. Haz doble clic en el archivo.
 3. **Aviso de Windows SmartScreen.** Como el instalador todavía no tiene firma digital, Windows puede mostrar
    "Windows protegió su PC". Haz clic en **Más información** y luego en **Ejecutar de todas formas**. Esto es normal
@@ -24,7 +28,7 @@ No necesita permisos de administrador: se instala solo para tu usuario.
 - Al abrir verás la **pantalla de inicio**: el botón **Crear proyecto**, accesos rápidos (Plantillas, Modo Tempo/BPM,
   Karaoke/Letras, Importar medios, IA con Grok), **Lo nuevo de Andromeda** (lanzamientos y playlists reales) y tus proyectos.
 - En tus proyectos puedes buscar, cambiar entre cuadrícula y lista, renombrar, duplicar y mandar a la **Papelera**
-  (desde ahí se recuperan o se borran para siempre). Si venías de la 1.0.0, tu proyecto se conserva y aparece en la lista.
+  (desde ahí se recuperan o se borran para siempre). Si venías de una prueba anterior (1.0.0 / 1.0.1), tu proyecto se conserva y aparece en la lista.
 - Arrastra tus videos, fotos o música a la ventana. El botón con la casita vuelve al inicio; todo se guarda solo.
 - Atajos: **S** o **Ctrl+B** corta, **Supr** borra, **Ctrl+Z** deshace, **Espacio** reproduce o pausa,
   **Ctrl+A** selecciona todos los clips, **Esc** quita la selección, **Ctrl+C / Ctrl+X / Ctrl+V** copian, cortan y pegan,
@@ -60,7 +64,7 @@ Necesitas una suscripción activa: **SuperGrok, X Premium+ o X Subscription**.
   xAI (auth.x.ai y api.x.ai). Andromeda Music Inc no cobra ni paga el uso de la IA.
 - En la versión web, la IA dice **"Disponible en la app de escritorio"**.
 
-> Nota de la versión 1.0.0: el botón **Conectar mi Grok** aparece deshabilitado hasta que xAI habilite el inicio de
+> Nota de la beta: el botón **Conectar mi Grok** aparece deshabilitado hasta que xAI habilite el inicio de
 > sesión para AndromedaVideoCut. Llegará en una actualización automática.
 
 ## Actualizaciones
@@ -71,7 +75,7 @@ instalada aparece en **Ayuda → Acerca de**. Tus proyectos y ajustes se conserv
 
 ## Desinstalar
 **Configuración de Windows → Aplicaciones → Aplicaciones instaladas → AndromedaVideoCut → Desinstalar**
-(o *Panel de control → Programas → Desinstalar un programa*). Aparece como "AndromedaVideoCut 1.0.0", de Andromeda Music Inc.
+(o *Panel de control → Programas → Desinstalar un programa*). Aparece como "AndromedaVideoCut Beta 0.0.2", de Andromeda Music Inc.
 
 ## Soporte
 Escríbenos desde [andromedamusicinc.com](https://andromedamusicinc.com). Incluye tu versión (Ayuda → Acerca de) y,

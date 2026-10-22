@@ -1,7 +1,7 @@
 {
   "name": "andromedavideocut-desktop",
   "productName": "AndromedaVideoCut",
-  "version": "1.0.2",
+  "version": "0.0.2",
   "description": "AndromedaVideoCut — editor de video de Andromeda Music Inc. para escritorio",
   "author": {
     "name": "Andromeda Music Inc",
@@ -64,7 +64,7 @@
       "createStartMenuShortcut": true,
       "menuCategory": "Andromeda Music Inc",
       "shortcutName": "AndromedaVideoCut",
-      "uninstallDisplayName": "AndromedaVideoCut ${version}",
+      "uninstallDisplayName": "AndromedaVideoCut Beta ${version}",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": false,

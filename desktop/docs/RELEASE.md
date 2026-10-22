@@ -3,9 +3,11 @@
 > **Regla:** nada se publica (push, release, GitHub Pages) sin un **OK nuevo y explícito de Wilhelm** para esa versión.
 
 ## 1. Subir la versión
-1. Edita `desktop/package.json` → `"version"` (SemVer: `1.0.1` corrección, `1.1.0` función nueva, `2.0.0` cambio grande).
+1. Edita `desktop/package.json` → `"version"` (la web toma la misma versión). **Betas: `0.0.x`** (siguiente: `0.0.3`);
+   la **`1.0.0` es el lanzamiento oficial**. Después: `1.0.1` corrección, `1.1.0` función nueva, `2.0.0` cambio grande.
+   Con versión `0.x` la app muestra "Beta X.Y.Z" (título, inicio, Acerca de) y el instalador también.
 2. Agrega la sección nueva arriba en `desktop/CHANGELOG.md` y actualiza la versión en `desktop/README.md` si se menciona.
-3. Commit: `git commit -am "desktop: v1.0.1"` y etiqueta `git tag v1.0.1` (local hasta el OK).
+3. Commit: `git commit -am "desktop: v0.0.3"` y etiqueta `git tag v0.0.3` (local hasta el OK).
 
 ## 2. Compilar
 ```bash
@@ -29,13 +31,13 @@ Salida en `desktop/dist/`:
   contextual, visor separado) y `xvfb-run -a node test/audio-e2e.cjs` (graba la salida con PulseAudio).
 - `python3 desktop/test/web101.py` desde la raíz del repo (versión web, headless).
 - `node test/oauth-e2e.cjs` (con `xvfb-run -a` en Linux): IA bloqueada sin sesión, 403, éxito, código, desconectar.
-- Prueba del updater (simula 1.0.0 → versión nueva contra un servidor local):
+- Prueba del updater (simula la versión instalada → la nueva, p. ej. 0.0.2 → 0.0.3 contra un servidor local):
   ```bash
-  npx electron-builder --win nsis --x64 --publish never -c.extraMetadata.version=1.0.1 -c.directories.output=/tmp/upd101
-  cd /tmp/upd101 && cp latest.yml latest-linux.yml && python3 -m http.server 18790 --bind 127.0.0.1 &
+  npx electron-builder --win nsis --x64 --publish never -c.extraMetadata.version=0.0.3 -c.directories.output=/tmp/upd003
+  cd /tmp/upd003 && cp latest.yml latest-linux.yml && python3 -m http.server 18790 --bind 127.0.0.1 &
   cd desktop && AVC_UPDATER_TEST=http://127.0.0.1:18790/ npx electron .
   ```
-  Debe mostrar en consola: `disponible 1.0.1` → diálogo "Hay una nueva versión 1.0.1, ¿actualizar?" → `progreso 100%`
+  Debe mostrar en consola: `disponible 0.0.3` → diálogo "Hay una nueva versión 0.0.3, ¿actualizar?" → `progreso 100%`
   → `descargada` → "Instalar y reiniciar". (`latest-linux.yml` solo hace falta al probar desde Linux.)
 - Instalación silenciosa con wine: `wine dist/AndromedaVideoCut-Setup-X.Y.Z-x64.exe /S`. Con wine, el stub de PowerShell
   hace creer al instalador que la app está abierta (sale con código 2). Para la prueba, reemplaza
@@ -55,7 +57,17 @@ git push origin main --tags
 gh release create vX.Y.Z desktop/dist/release-X.Y.Z/* --repo AndromedaMusicInc/andromedavideocut \
   --title "AndromedaVideoCut X.Y.Z" --notes-file <(sed -n '/## \[X.Y.Z\]/,/## \[/p' desktop/CHANGELOG.md)
 ```
-No marques el release como *pre-release*: electron-updater (canal `latest`) lo ignoraría.
+No marques el release como *pre-release*: electron-updater (canal `latest`, `allowPrerelease = false` en
+`updater.cjs`) lo ignoraría y las betas no se actualizarían solas. Las betas 0.0.x se publican como release **normal**
+(el "Beta" va en el título y las notas).
+
+### Betas 0.0.x y las pruebas 1.0.x (importante)
+- El proveedor GitHub de electron-updater lee el **último release publicado** (`releases/latest`). Si quedara publicado
+  un release `v1.0.0`/`v1.0.1`, una beta 0.0.x lo vería como versión mayor y se "actualizaría" a esa prueba vieja.
+  Por eso **los releases y tags `v1.0.0` y `v1.0.1` deben borrarse en GitHub** antes de publicar `v0.0.2`.
+- `allowDowngrade = false`: un PC con 1.0.x **no** baja a 0.0.x. Hay que desinstalar e instalar la beta a mano
+  (los proyectos en `%APPDATA%/AndromedaVideoCut` se conservan).
+- 0.0.2 → 0.0.3 → … → 1.0.0 se actualiza solo mientras cada versión sea un release normal y mayor que la anterior.
 
 ## 3b. Actualizar "Lo nuevo de Andromeda" (feed)
 La pantalla de inicio lee `https://andromedamusicinc.github.io/andromedavideocut/feed/andromeda-feed.json`, guarda una

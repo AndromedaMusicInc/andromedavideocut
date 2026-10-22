@@ -1,4 +1,4 @@
-// 1.0.2: clic en la biblioteca = vista previa temporal (no toca la línea de tiempo ni el proyecto).
+// 0.0.2 (beta): clic en la biblioteca = vista previa temporal (no toca la línea de tiempo ni el proyecto).
 // Solo arrastrar agrega. La vista previa se borra al hacer clic en otra parte.
 import { create } from "zustand";
 import { mixer, synth, SAMPLE_RATE } from "@/lib/editor/audio";

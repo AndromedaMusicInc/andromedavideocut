@@ -7,6 +7,7 @@ import { ASPECTS, type AspectId } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
 import { Activity, ArchiveRestore, Copy, Download, ExternalLink, Film, FolderOpen, House, LayoutGrid, LayoutTemplate, List, ListMusic, Lock, Mic2, Music2, Newspaper, Pencil, Play, Plus, RefreshCw, Search, Settings, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { VERSION_LABEL } from "@/lib/version";
 
 const BASE = import.meta.env.BASE_URL;
 const ASPECT_ORDER: AspectId[] = ["9:16", "16:9", "1:1", "4:5"];
@@ -295,7 +296,10 @@ export function Welcome({ onOpen }: { onOpen: OpenFn }) {
       <aside className="flex w-56 shrink-0 flex-col border-r border-[#23232F] bg-[#0B0B12] p-3">
         <div className="mb-4 flex items-center gap-2 px-1">
           <span className="grid size-9 place-items-center rounded-full border border-[#D4AF37] bg-[#15151F]"><img src={`${BASE}brand/mark.png`} alt="" className="size-6 object-contain" /></span>
-          <span className="text-[15px] font-bold leading-tight text-white">Andromeda<span style={{ color: GOLD }}>VideoCut</span></span>
+          <span className="flex flex-col">
+            <span className="text-[15px] font-bold leading-tight text-white">Andromeda<span style={{ color: GOLD }}>VideoCut</span></span>
+            <span data-version-label="" className="text-[10px] font-semibold uppercase tracking-wide text-[#8A8A9A]">{VERSION_LABEL}</span>
+          </span>
         </div>
         <nav className="flex flex-col gap-0.5" aria-label="Secciones">
           <NavItem id="inicio" cur={section} set={setSection} icon={<House className="size-4" />} label="Inicio" />
@@ -321,7 +325,7 @@ export function Welcome({ onOpen }: { onOpen: OpenFn }) {
       </aside>
       <main className="min-w-0 flex-1 overflow-y-auto px-6 pb-10 pt-5">
         {section === "inicio" ? (
-          <div data-home-layout="v102" className="flex flex-col gap-6 xl:flex-row">
+          <div data-home-layout="v002" className="flex flex-col gap-6 xl:flex-row">
             <div className="min-w-0 flex-1">
               <header className="flex flex-wrap items-center gap-3">
                 <div className="mr-auto">

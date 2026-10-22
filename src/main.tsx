@@ -5,6 +5,9 @@ import { Welcome } from "@/components/editor/Welcome";
 import type { ProjectMeta } from "@/lib/editor/projects";
 import type { ToolId } from "@/lib/editor/types";
 import "./styles.css";
+import { APP_TITLE } from "@/lib/version";
+
+document.title = APP_TITLE;
 
 function App() {
   const [tool, setTool] = useState<ToolId | undefined>();
