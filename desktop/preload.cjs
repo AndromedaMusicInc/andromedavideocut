@@ -21,6 +21,21 @@ contextBridge.exposeInMainWorld("avcDesktop", {
     moveTo: (id, fullscreen) => ipcRenderer.invoke("viewer:move", id, Boolean(fullscreen)),
     toggleFullscreen: () => ipcRenderer.invoke("viewer:fullscreen"),
   },
+  media: {
+    info: () => ipcRenderer.invoke("media:info"),
+    probe: (p) => ipcRenderer.invoke("media:probe", String(p)),
+    proxy: (id, p, opts) => ipcRenderer.invoke("media:proxy", String(id), String(p), opts || {}),
+    read: (p) => ipcRenderer.invoke("media:read", String(p)),
+    audio: (id, p) => ipcRenderer.invoke("media:audio", String(id), String(p)),
+    cancel: (id) => ipcRenderer.invoke("media:cancel", String(id)),
+    log: (entry) => ipcRenderer.invoke("media:log", entry),
+    openLog: () => ipcRenderer.invoke("media:open-log"),
+    onProgress: (fn) => {
+      const h = (_e, id, pct) => fn(id, pct);
+      ipcRenderer.on("media:progress", h);
+      return () => ipcRenderer.removeListener("media:progress", h);
+    },
+  },
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
   showItemInFolder: (p) => ipcRenderer.invoke("file:show", String(p)),
   feedCache: (op, text) => ipcRenderer.invoke("feed:cache", op, text),

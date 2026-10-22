@@ -126,6 +126,7 @@ export interface EditorState {
   setTransition: (id: TransitionId) => void;
   loadSaved: (saved: SavedProject) => void;
   setAssets: (assets: Asset[]) => void;
+  patchAsset: (id: string, patch: Partial<Asset>) => void;
   clearTimeline: () => void;
   loadDemo: () => void;
   analyzeBeat: () => Promise<string>;
@@ -363,8 +364,8 @@ export const useEditor = create<EditorState>((set, get) => ({
     );
   },
   addAsset: async (asset, blob) => {
-    if (blob) {
-      await idbPut(asset.id, blob).catch(() => undefined);
+    if (blob && asset.status !== "convirtiendo") {
+      await idbPut(asset.id, blob).catch(() => get().tell("⚠ No se pudo guardar una copia del medio en el proyecto (almacenamiento lleno o archivo muy grande). Se ve ahora, pero al reabrir el proyecto habrá que importarlo otra vez."));
     }
     const before = snap(get());
     const exists = get().assets.some((item) => item.id === asset.id);
@@ -848,6 +849,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     });
   },
   setAssets: (assets) => set({ assets }),
+  patchAsset: (id, patch) => set({ assets: get().assets.map((a) => (a.id === id ? { ...a, ...patch } : a)) }),
   clearTimeline: () => {
     const before = snap(get());
     set({
@@ -1184,5 +1186,19 @@ let styleClipboard: Partial<Clip> | null = null;
 
 if (typeof window !== "undefined") {
   // Solo lectura, para pruebas y diagnóstico.
-  (window as unknown as { __avcClips?: () => unknown }).__avcClips = () => useEditor.getState().clips.map((c) => ({ id: c.id, type: c.type, trackId: c.trackId, filter: c.filter, effect: c.effect, start: c.start, duration: c.duration }));
+  (window as unknown as { __avcClips?: () => unknown }).__avcClips = () => useEditor.getState().clips.map((c) => ({ id: c.id, type: c.type, trackId: c.trackId, assetId: c.assetId, filter: c.filter, effect: c.effect, start: c.start, duration: c.duration }));
 }
+if (typeof window !== "undefined") {
+  (window as unknown as { __avcAssets?: () => unknown }).__avcAssets = () => useEditor.getState().assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, duration: a.duration, thumb: Boolean(a.thumb), status: (a as { status?: string }).status, error: (a as { error?: string }).error }));
+}
+if (typeof window !== "undefined") (window as unknown as { __avcBusy?: () => unknown }).__avcBusy = () => useEditor.getState().busy;
+
+// 0.0.3: el visor necesita un <video>/<img> por medio importado. Antes nadie llamaba a pool.warm(), así que los
+// videos e imágenes importados se veían en Medios pero el visor los dibujaba en blanco.
+if (typeof window !== "undefined") {
+  pool.warm(useEditor.getState().assets);
+  useEditor.subscribe((s, p) => {
+    if (s.assets !== p.assets) pool.warm(s.assets);
+  });
+}
+if (typeof window !== "undefined") (window as unknown as { __avcEditor?: unknown }).__avcEditor = useEditor;

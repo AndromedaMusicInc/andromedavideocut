@@ -701,6 +701,7 @@ function ClipView({ clip, pps, parked }: { clip: Clip; pps: number; parked?: boo
         {clip.name}
       </span>
       {clip.type === "audio" && clip.generator ? <Waveform id={clip.generator} /> : null}
+      {(clip.type === "audio" || clip.type === "video") && clip.assetId ? <AssetWave id={clip.assetId} /> : null}
       <span
         className="absolute inset-y-0 left-0 w-2 cursor-ew-resize"
         onPointerDown={(event) => beginDrag(event, clip, "start")}
@@ -847,4 +848,10 @@ function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" 
   };
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", up);
+}
+
+function AssetWave({ id }: { id: string }) {
+  const src = useEditor((s) => s.assets.find((a) => a.id === id)?.waveform);
+  if (!src) return null;
+  return <img data-clip-wave="" src={src} alt="" className="pointer-events-none absolute inset-x-1 bottom-0.5 h-4 w-[calc(100%-8px)] object-fill opacity-70" />;
 }

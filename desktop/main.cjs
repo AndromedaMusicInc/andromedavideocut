@@ -4,6 +4,7 @@ const { app, BrowserWindow, shell, Menu, protocol, net, dialog, ipcMain, screen 
 const { registerXaiIpc } = require("./xai-oauth.cjs");
 const { registerProjectsIpc } = require("./projects.cjs");
 const viewer = require("./viewer.cjs");
+const media = require("./media.cjs");
 // Las 0.x son betas; 1.0.0 será el lanzamiento oficial.
 const versionLabel = () => (app.getVersion().startsWith("0.") ? `Beta ${app.getVersion()}` : app.getVersion());
 const INSTAGRAM_URL = "https://www.instagram.com/andromedavideocut/";
@@ -217,6 +218,7 @@ function buildMenu() {
         { label: "Buscar actualizaciones…", click: () => updates?.check(true) },
         { label: "Diagnóstico de audio…", click: () => audioDiagnostics() },
         { type: "separator" },
+        { label: "Abrir registro de importación de medios", click: () => shell.showItemInFolder(media.logFile()) },
         { label: "Sitio de Andromeda Music Inc", click: () => shell.openExternal("https://andromedamusicinc.com") },
         {
           label: "Instagram @andromedavideocut",
@@ -274,6 +276,7 @@ app.whenReady().then(() => {
   registerXaiIpc(process.env.AVC_TEST_BROWSER ? { testBrowser: (u) => { require("./test/fake-browser.cjs")(u); } } : {});
   protocol.handle("app", serveApp);
   registerProjectsIpc();
+  media.registerMediaIpc();
   ipcMain.handle("viewer:displays", () => {
     const cur = viewer.current();
     const at = cur ? screen.getDisplayMatching(cur.getBounds()).id : viewer.load().displayId ?? screen.getPrimaryDisplay().id;

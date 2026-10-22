@@ -4,7 +4,10 @@ import { ReelPane } from "@/components/editor/Reel";
 import { eatenClick, startLibraryDrag, type DragItem, type DropHit } from "@/lib/editor/place";
 import { waveformUrl } from "@/lib/editor/audio";
 import { drawGenerator, drawSticker } from "@/lib/editor/generators";
-import { ingestFile } from "@/lib/editor/import-media";
+import { ACCEPT, desktopMedia, grabThumb, ImportError, ingestFile, makeProxy } from "@/lib/editor/import-media";
+import { idbPut } from "@/lib/editor/persist";
+import { pool } from "@/lib/editor/pool";
+import { loadAssetAudio } from "@/lib/editor/audio-import";
 import { useEditor } from "@/lib/editor/store";
 import { toggleLibPreview, useLibPreview, type PreviewItem } from "@/lib/editor/lib-preview";
 import { playback } from "@/lib/editor/playback";
@@ -170,20 +173,53 @@ function MediaPane() {
   const busy = useEditor((s) => s.busy);
   const [error, setError] = useState<string | null>(null);
 
+  const [errors, setErrors] = useState<string[]>([]);
+  async function convert(assetId: string, raw: boolean) {
+    const st = useEditor.getState();
+    const asset = st.assets.find((a) => a.id === assetId);
+    if (!asset) return;
+    try {
+      const { blob, codec } = await makeProxy(asset, raw, (pct) => useEditor.getState().patchAsset(assetId, { progress: pct }));
+      await idbPut(assetId, blob).catch(() => undefined);
+      const url = URL.createObjectURL(blob);
+      const thumb = await grabThumb(url, "video").catch(() => undefined);
+      pool.drop(assetId);
+      useEditor.getState().patchAsset(assetId, { url, thumb, status: undefined, progress: 100, proxy: codec });
+      const a2 = useEditor.getState().assets.find((a) => a.id === assetId);
+      if (a2) await loadAssetAudio(a2, blob, a2.hasAudio);
+      useEditor.getState().tell(`${asset.name}: listo para editar (proxy ${codec}).`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo convertir";
+      useEditor.getState().patchAsset(assetId, { status: "error", error: msg });
+      setErrors((e) => [...e, `${asset.name}: ${msg}`]);
+    }
+  }
   async function take(files: File[]) {
     if (!files.length) return;
     setError(null);
+    setErrors([]);
     useEditor.setState({ busy: "Importando…" });
+    const pending: { id: string; raw: boolean }[] = [];
     try {
       for (const file of files) {
-        const loaded = await ingestFile(file);
-        await addAsset(loaded.asset, loaded.blob);
+        try {
+          const loaded = await ingestFile(file);
+          await addAsset(loaded.asset, loaded.blob);
+          if (loaded.needsProxy) pending.push({ id: loaded.asset.id, raw: loaded.needsProxy.raw });
+          else {
+            const r = await loadAssetAudio(loaded.asset, loaded.blob, loaded.asset.hasAudio);
+            if (r !== "ok" && r !== "convertido" && r !== "sin-audio") setErrors((e) => [...e, `${file.name}: ${r}`]);
+          }
+        } catch (err) {
+          const msg = err instanceof ImportError || err instanceof Error ? err.message : "No se pudo importar";
+          setErrors((e) => [...e, `${file.name}: ${msg}`]);
+        }
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo importar");
     } finally {
       useEditor.setState({ busy: null });
     }
+    // Conversión en segundo plano, una a la vez (no bloquea la edición).
+    for (const p of pending) await convert(p.id, p.raw);
   }
 
   return (
@@ -203,7 +239,7 @@ function MediaPane() {
       <input
         ref={inputRef}
         type="file"
-        accept="video/*,image/*,audio/*"
+        accept={ACCEPT}
         multiple
         className="sr-only"
         onChange={(event) => {
@@ -212,6 +248,15 @@ function MediaPane() {
         }}
       />
       {error ? <p className="text-sm text-accent">{error}</p> : null}
+      {errors.length ? (
+        <div role="alert" data-import-error="" className="relative rounded-md border border-red-400/50 bg-red-500/10 p-2 pr-8 text-xs text-fg">
+          {errors.map((e) => <p key={e} className="mb-1 last:mb-0">⚠ {e}</p>)}
+          <button type="button" data-import-error-close="" aria-label="Cerrar aviso" onClick={() => setErrors([])} className="absolute right-1 top-1 grid size-6 place-items-center rounded hover:bg-bg/50">×</button>
+        </div>
+      ) : null}
+      {!desktopMedia() ? (
+        <p data-web-formats="" className="text-[11px] text-faint">Web: MP4/MOV (H.264), WebM (VP8/VP9/AV1), MKV con H.264, imágenes y audio. HEVC solo si tu navegador y equipo lo decodifican. Más formatos en la versión de PC (HEVC 10-bit, ProRes, DNxHD, MXF, AVI, MTS, RED con REDCINE-X).</p>
+      ) : null}
       {assets.length ? (
         <div className="grid grid-cols-2 gap-2">
           {assets.map((asset) => (
@@ -224,9 +269,18 @@ function MediaPane() {
                 {asset.thumb ? (
                   <img src={asset.thumb} alt="" className="aspect-video w-full object-cover" />
                 ) : (
-                  <div className="grid aspect-video place-items-center text-xs text-muted">{asset.kind}</div>
+                  <div className="grid aspect-video place-items-center text-xs text-muted">{asset.status === "convirtiendo" ? "Convirtiendo…" : asset.status === "error" ? "⚠ Sin imagen" : asset.kind}</div>
                 )}
-                <span className="block truncate px-2 py-1.5 text-xs text-fg">{asset.name}</span>
+                {asset.status === "convirtiendo" ? (
+                  <span data-proxy-progress={asset.progress ?? 0} className="absolute inset-x-0 top-0 block h-1 bg-line" title={`Creando proxy de edición ${asset.progress ?? 0}%`}>
+                    <span className="block h-full bg-accent transition-[width]" style={{ width: `${asset.progress ?? 0}%` }} />
+                  </span>
+                ) : null}
+                {asset.waveform && asset.kind !== "image" ? <img data-asset-wave="" src={asset.waveform} alt="" className={cn("w-full object-fill opacity-80", asset.thumb ? "absolute inset-x-0 bottom-9 h-5" : "h-6")} /> : null}
+                <span className="block truncate px-2 pt-1.5 text-xs text-fg" title={asset.name}>{asset.name}</span>
+                <span className="block truncate px-2 pb-1.5 text-[10px] text-faint" title={asset.error || asset.codec}>
+                  {asset.status === "convirtiendo" ? `Proxy ${asset.progress ?? 0}%` : asset.status === "error" ? asset.error : asset.audioError ? `⚠ ${asset.audioError}` : `${asset.codec ?? ""}${asset.proxy ? " · proxy" : ""}${asset.audioOk === "ffmpeg-wav48k" ? " · audio convertido" : ""}`}
+                </span>
               </button>
               <button
                 type="button"

@@ -1,7 +1,7 @@
 {
   "name": "andromedavideocut-desktop",
   "productName": "AndromedaVideoCut",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "AndromedaVideoCut — editor de video de Andromeda Music Inc. para escritorio",
   "author": {
     "name": "Andromeda Music Inc",
@@ -28,6 +28,7 @@
     "files": [
       "main.cjs",
       "updater.cjs",
+      "media.cjs",
       "viewer.cjs",
       "projects.cjs",
       "xai-oauth.cjs",
@@ -76,6 +77,21 @@
       "include": "build/installer.nsh"
     },
     "copyright": "© 2026 Andromeda Music Inc",
+    "extraResources": [
+      {
+        "from": "vendor/ffmpeg/win/bin",
+        "to": "ffmpeg",
+        "filter": ["ffmpeg.exe", "ffprobe.exe", "*.dll"]
+      },
+      {
+        "from": "vendor/ffmpeg/win/LICENSE.txt",
+        "to": "ffmpeg/LICENSE-FFmpeg-LGPL.txt"
+      },
+      {
+        "from": "build/FFMPEG-NOTICE.txt",
+        "to": "ffmpeg/LEEME-FFmpeg.txt"
+      }
+    ],
     "extraFiles": [
       {
         "from": "build/README.txt",

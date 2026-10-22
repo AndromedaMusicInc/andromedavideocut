@@ -405,5 +405,5 @@ if (typeof window !== "undefined") {
   window.addEventListener("pointerdown", unlock, true);
   window.addEventListener("keydown", unlock, true);
   // Solo lectura, para diagnóstico y pruebas.
-  (window as unknown as { __avcAudio: unknown }).__avcAudio = { info: () => mixer.info(), level: () => mixer.level() };
+  (window as unknown as { __avcAudio: unknown }).__avcAudio = { info: () => mixer.info(), level: () => mixer.level(), has: (id: string) => mixer.buffers.has(id) };
 }

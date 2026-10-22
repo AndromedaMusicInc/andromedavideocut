@@ -142,6 +142,19 @@ export interface Asset {
   waveform?: string;
   /** Ruta del archivo original en el disco (solo app de escritorio). */
   path?: string;
+  /** 0.0.3: "convirtiendo" mientras se crea el proxy de edición; "error" si no se pudo. */
+  status?: "convirtiendo" | "error";
+  progress?: number;
+  error?: string;
+  /** Códec/contenedor detectado (p. ej. "HEVC/H.265 10-bit, MOV"). */
+  codec?: string;
+  /** Se edita con un proxy (el original no lo decodifica Chromium). */
+  proxy?: string;
+  /** Audio: "chromium" o "ffmpeg-wav48k" si se cargó; mensaje si no se pudo. */
+  audioOk?: string;
+  audioError?: string;
+  /** Si sabemos (ffprobe/mediabunny) si trae pista de audio. */
+  hasAudio?: boolean;
 }
 
 export interface TrackDef {

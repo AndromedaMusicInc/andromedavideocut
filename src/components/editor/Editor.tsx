@@ -1,3 +1,4 @@
+import { reloadAssetAudio } from "@/lib/editor/audio-import";
 import { ClipMenu } from "@/components/editor/ClipMenu";
 import { Inspector } from "@/components/editor/Inspector";
 import { Library, ToolTabs } from "@/components/editor/Library";
@@ -119,11 +120,18 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         const assets: Asset[] = [];
         for (const meta of saved.assets) {
           try {
+            if (meta.status === "convirtiendo") {
+              assets.push({ ...meta, status: "error", error: "Conversión interrumpida: vuelve a importarlo." });
+              continue;
+            }
             const blob = await idbGet(meta.id);
-            if (!blob) continue;
+            if (!blob) {
+              assets.push({ ...meta, status: "error", error: "Falta el archivo: vuelve a importarlo." });
+              continue;
+            }
             const url = URL.createObjectURL(blob);
             assets.push({ ...meta, url });
-            if (meta.kind !== "image") mixer.queue(meta.id, await blob.arrayBuffer());
+            if (meta.kind !== "image") void reloadAssetAudio(meta, blob);
           } catch {
             /* falta un archivo: se omite */
           }

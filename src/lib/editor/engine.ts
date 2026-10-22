@@ -78,3 +78,5 @@ export function startEngine(drawPreview: (time: number) => void) {
   raf = requestAnimationFrame(loop);
   return () => cancelAnimationFrame(raf);
 }
+
+if (typeof window !== "undefined") (window as unknown as { __avcSeek?: (t: number) => void }).__avcSeek = (t: number) => seek(t);

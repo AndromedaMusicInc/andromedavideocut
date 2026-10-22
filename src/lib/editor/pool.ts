@@ -132,3 +132,9 @@ export function drawCover(
   }
   ctx.drawImage(source, dx, dy, dw, dh);
 }
+
+if (typeof window !== "undefined") {
+  // Solo lectura, para pruebas y diagnóstico: estado de los videos cargados en el visor.
+  (window as unknown as { __avcPool?: () => unknown }).__avcPool = () =>
+    [...pool.videos.entries()].map(([id, v]) => ({ id, ready: v.readyState, w: v.videoWidth, h: v.videoHeight, err: v.error?.code ?? 0, dur: v.duration }));
+}
