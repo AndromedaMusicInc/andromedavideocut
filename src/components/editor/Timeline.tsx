@@ -4,7 +4,7 @@ import { pause, seek } from "@/lib/editor/engine";
 import { playback } from "@/lib/editor/playback";
 import { registerHitTest, subscribeDragPoint, setLaneIntent, readLaneIntent, publishDrag, commitLaneAt, registerLaneResolver, setCursorTag, type DragPoint } from "@/lib/editor/place";
 import { limitDuration, useEditor } from "@/lib/editor/store";
-import { formatTime, findSlot, snapTo, timelineSpan } from "@/lib/editor/time";
+import { formatTime, findSlot, snapMove, snapTo, timelineSpan } from "@/lib/editor/time";
 import { laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
 import type { Clip } from "@/lib/editor/types";
 import { TRANSITIONS } from "@/lib/editor/types";
@@ -226,7 +226,7 @@ export function Timeline() {
     const raw = Math.max(0, (clientX - rect.left + el.scrollLeft) / pps);
     const state = useEditor.getState();
     if (!state.snap) return raw;
-    const points = [0, ...state.beats];
+    const points = [0, playback.time, ...state.beats];
     for (const clip of state.clips) points.push(clip.start, clip.start + clip.duration);
     return snapTo(raw, points, pps);
   }
@@ -730,7 +730,7 @@ function beginGroupDrag(event: ReactPointerEvent, clip: Clip) {
     if (now.snap) {
       const points = [0, playback.time, ...now.beats, ...others.flatMap((o) => [o.start, o.start + o.duration])];
       const s0 = (orig[clip.id] ?? 0) + dx;
-      dx = snapTo(s0, points, pps) - (orig[clip.id] ?? 0);
+      dx = snapMove(s0, clip.duration, points, pps) - (orig[clip.id] ?? 0);
     }
     now.moveSelection(ids, orig, dx);
   };
@@ -772,9 +772,7 @@ function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" 
     if (mode === "move") {
       let start = Math.max(0, orig.start + dx);
       if (now.snap) {
-        const byStart = snapTo(start, points, pps);
-        const byEnd = snapTo(start + orig.duration, points, pps) - orig.duration;
-        start = Math.abs(byStart - (orig.start + dx)) <= Math.abs(byEnd - (orig.start + dx)) ? byStart : Math.max(0, byEnd);
+        start = snapMove(start, orig.duration, points, pps);
       }
       publishDrag({ x: ev.clientX, y: ev.clientY, kind: "video" });
       const intent = readLaneIntent();

@@ -51,6 +51,25 @@ export function audioEnvelope(clip: Clip, time: number) {
   return gain;
 }
 
+/**
+ * Imán al mover un clip: prueba pegar su inicio y su fin y elige el que de verdad
+ * se pegó a un punto (el más cercano). Antes se comparaba contra la posición cruda
+ * y la opción "sin pegar" (distancia 0) siempre ganaba, así que el imán nunca actuaba.
+ */
+export function snapMove(start: number, duration: number, points: number[], pps: number) {
+  // Se decide por el borde que de verdad se pegó (comparar `byEnd !== start` fallaba por
+  // redondeo: end - duration no da exactamente start y la opción "sin pegar" ganaba).
+  const end = start + duration;
+  const startHit = snapTo(start, points, pps);
+  const endHit = snapTo(end, points, pps);
+  const byStart = startHit;
+  const byEnd = endHit - duration;
+  const dStart = startHit !== start ? Math.abs(startHit - start) : Infinity;
+  const dEnd = endHit !== end ? Math.abs(endHit - end) : Infinity;
+  if (dStart === Infinity && dEnd === Infinity) return start;
+  return Math.max(0, dStart <= dEnd ? byStart : byEnd);
+}
+
 export function snapTo(time: number, points: number[], pps: number) {
   const threshold = 8 / Math.max(pps, 1);
   let best = time;
@@ -64,3 +83,20 @@ export function snapTo(time: number, points: number[], pps: number) {
   }
   return best;
 }
+
+/** Clips visuales que tienen otro clip pegado antes en su pista (= hay un corte donde poner transición). */
+export function joinClips(clips: Clip[]) {
+  const out: Clip[] = [];
+  const rows = new Map<string, Clip[]>();
+  for (const c of clips) if ((c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled) rows.set(c.trackId, [...(rows.get(c.trackId) ?? []), c]);
+  for (const row of rows.values()) {
+    row.sort((a, b) => a.start - b.start);
+    for (let i = 1; i < row.length; i += 1) {
+      const prev = row[i - 1]!;
+      const cur = row[i]!;
+      if (cur.start - (prev.start + prev.duration) <= 0.25) out.push(cur);
+    }
+  }
+  return out;
+}
+

@@ -1,7 +1,7 @@
 import { desktopViewer, detachedSize, registerViewerCanvas, useViewer, type DisplayInfo } from "@/lib/editor/detach";
 import { LevelMeter, OutputSelect, TestSound } from "@/components/editor/AudioOutput";
 import { drawFrame } from "@/lib/editor/draw";
-import { useLibPreview, withLibPreview } from "@/lib/editor/lib-preview";
+import { libPreviewTime, useLibPreview, withLibPreview } from "@/lib/editor/lib-preview";
 import { pause, seek, startEngine, togglePlay } from "@/lib/editor/engine";
 import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
@@ -125,7 +125,8 @@ export function Preview() {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       try {
-        drawFrame(ctx, canvas.width, canvas.height, playback.time, withLibPreview(useEditor.getState().clips), useEditor.getState().layers, useEditor.getState().trackOrder);
+        const st = useEditor.getState();
+        drawFrame(ctx, canvas.width, canvas.height, libPreviewTime(st.clips, playback.time, performance.now()), withLibPreview(st.clips), st.layers, st.trackOrder);
         if (faultRef.current) {
           faultRef.current = null;
           setFault(null);

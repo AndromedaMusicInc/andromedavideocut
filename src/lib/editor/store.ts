@@ -20,7 +20,7 @@ import {
 import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
-import { contentEnd, findSlot, sourceLength } from "@/lib/editor/time";
+import { contentEnd, findSlot, joinClips, sourceLength } from "@/lib/editor/time";
 import { insertLane, MAX_LAYERS, pruneTracks, resolveLane, visibleLayers } from "@/lib/editor/tracks";
 import {
   DEMO_CLIPS,
@@ -37,6 +37,7 @@ import {
   type TextDraft,
   type ToolId,
   type TransitionId,
+  TRANSITIONS,
 } from "@/lib/editor/types";
 import { create } from "zustand";
 
@@ -1149,22 +1150,10 @@ export function selectedClip(state: EditorState) {
 }
 
 function dropTransition(id: TransitionId, time: number) {
-  const visuals = useEditor
-    .getState()
-    .clips.filter((clip) => clip.type === "video" || clip.type === "image" || clip.type === "generator");
-  let best: Clip | null = null;
-  let bestDist = 0.55;
-  for (const clip of visuals) {
-    if (clip.start < 0.05) continue;
-    const dist = Math.abs(clip.start - time);
-    if (dist < bestDist) {
-      best = clip;
-      bestDist = dist;
-    }
-  }
   const api = useEditor.getState();
+  const best = pickJoin(api.clips, time, api.pps);
   if (!best) {
-    api.setTransition(id);
+    api.tell("Suelta la transición en el corte entre dos clips seguidos de la misma pista.");
     return;
   }
   api.patchClip(best.id, {
@@ -1172,6 +1161,41 @@ function dropTransition(id: TransitionId, time: number) {
     transitionDur: id === "none" ? best.transitionDur : Math.max(0.35, best.transitionDur || 0.45),
   });
   api.select(best.id);
+  const name = TRANSITIONS.find((t) => t.id === id)?.name ?? "Transición";
+  api.tell(`${name} en el corte de ${best.start.toFixed(1)} s.`);
+}
+
+/**
+ * Elige el corte donde cae una transición soltada en `time`.
+ * 1) El corte más cercano dentro de ~24 px (mín. 0.55 s).
+ * 2) Si cayó encima de un clip: su corte de entrada, o si no tiene, el de salida.
+ * Antes, fuera de 0.55 s se aplicaba al clip seleccionado/bajo el cabezal (a veces el primero,
+ * sin clip antes), y parecía que la transición "no hacía nada".
+ */
+export function pickJoin(clips: Clip[], time: number, pps: number): Clip | null {
+  const joins = joinClips(clips);
+  if (!joins.length) return null;
+  const reach = Math.max(0.55, 24 / Math.max(pps, 1));
+  let best: Clip | null = null;
+  let bestDist = reach;
+  for (const clip of joins) {
+    const dist = Math.abs(clip.start - time);
+    if (dist < bestDist) {
+      best = clip;
+      bestDist = dist;
+    }
+  }
+  if (best) return best;
+  const visualAt = clips.filter(
+    (c) => (c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled && time >= c.start && time < c.start + c.duration,
+  );
+  for (const hit of visualAt) {
+    const own = joins.find((j) => j.id === hit.id);
+    if (own) return own;
+    const next = joins.find((j) => j.trackId === hit.trackId && Math.abs(j.start - (hit.start + hit.duration)) <= 0.25);
+    if (next) return next;
+  }
+  return null;
 }
 
 export function limitDuration(clip: Clip, duration: number, assets: Asset[]) {
