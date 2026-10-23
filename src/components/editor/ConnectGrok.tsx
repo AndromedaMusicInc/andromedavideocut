@@ -1,3 +1,4 @@
+import { openingEnabled, setOpeningEnabled } from "@/lib/editor/opening";
 import { LevelMeter, OutputSelect, TestSound } from "@/components/editor/AudioOutput";
 import {
   DESKTOP_ONLY_MSG,
@@ -221,6 +222,27 @@ export function ConnectGrokWizard() {
 }
 
 /** Ajustes → IA (opcional). */
+function OpeningToggle() {
+  const store = () => { try { return window.localStorage; } catch { return null; } };
+  const [on, setOn] = useState(() => openingEnabled(store()));
+  return (
+    <label data-opening-toggle="" className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-md border border-line bg-sunken p-3 text-sm text-fg">
+      <span>
+        Animación de inicio
+        <span className="block text-xs text-muted">El clip corto con el logo al abrir la app (una vez por sesión).</span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        aria-checked={on}
+        checked={on}
+        onChange={(e) => { setOpeningEnabled(store(), e.target.checked); setOn(e.target.checked); }}
+        className="size-5 accent-[var(--color-accent,#D4AF37)]"
+      />
+    </label>
+  );
+}
+
 export function SettingsDialog() {
   const open = useAi((s) => s.settings);
   const close = useAi((s) => s.closeSettings);
@@ -251,6 +273,7 @@ export function SettingsDialog() {
             Nivel <LevelMeter className="w-32" />
           </div>
         </section>
+        <OpeningToggle />
         <section className="mt-3 rounded-md border border-line bg-sunken p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-fg">
             <Sparkles className="size-4 text-accent" /> IA (opcional)

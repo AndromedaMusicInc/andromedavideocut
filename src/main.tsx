@@ -2,6 +2,7 @@ import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Editor } from "@/components/editor/Editor";
 import { Welcome } from "@/components/editor/Welcome";
+import { OpeningClip } from "@/components/editor/OpeningClip";
 import type { ProjectMeta } from "@/lib/editor/projects";
 import type { ToolId } from "@/lib/editor/types";
 import "./styles.css";
@@ -18,6 +19,7 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <OpeningClip />
     <App />
   </StrictMode>,
 );
