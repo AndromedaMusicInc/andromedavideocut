@@ -1,4 +1,4 @@
-# Beta 0.0.3 (antes 1.0.2) (web): inicio propio, botón "Separar visor", clic = vista previa (no agrega), arrastrar = agrega,
+# Beta 0.0.4 (antes 1.0.2) (web): inicio propio, botón "Separar visor", clic = vista previa (no agrega), arrastrar = agrega,
 # guardado con aviso de almacenamiento lleno, guardado al cerrar la pestaña y Ctrl+S guarda (no corta).
 from playwright.sync_api import sync_playwright
 import subprocess,time,json,os,hashlib
@@ -18,7 +18,7 @@ with sync_playwright() as p:
   b=p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"]); ctx=b.new_context(viewport={"width":1440,"height":900}); pg=ctx.new_page()
   errs=[]; pg.on("pageerror",lambda e:errs.append(str(e)))
   pg.goto("http://127.0.0.1:18732/index.html"); pg.wait_for_selector("[data-project]"); pg.wait_for_selector("[data-feed-origin]"); pg.wait_for_timeout(800)
-  ok("versión: título y portada dicen Beta 0.0.3",pg.title()=="AndromedaVideoCut · Beta 0.0.3" and pg.inner_text("[data-version-label]").strip().lower()=="beta 0.0.3",pg.title())
+  ok("versión: título y portada dicen Beta 0.0.4",pg.title()=="AndromedaVideoCut · Beta 0.0.4" and pg.inner_text("[data-version-label]").strip().lower()=="beta 0.0.4",pg.title())
   ok("inicio: nuevo diseño beta 0.0.2",pg.locator("[data-home-layout=v002]").count()==1)
   h=pg.locator("[data-new-project]").bounding_box()["height"]; ok("inicio: 'Nuevo proyecto' es un botón compacto",h<=48,f"{h}px de alto")
   ok("inicio: feed de Andromeda en panel lateral",pg.locator("[data-feed-rail] [data-feed-item]").count()>=5)

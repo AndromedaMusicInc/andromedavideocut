@@ -9,6 +9,21 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.4] — 2026-10-22 · Beta
+Beta de arreglos de la línea de tiempo: **el imán y las transiciones**. La app muestra "Beta 0.0.4".
+### Arreglado
+- **El imán no pegaba los clips** a los bordes de otros clips ni al cabezal. Al mover un clip se comparaba la
+  posición "pegada por el inicio" con la "pegada por el final" contra la posición cruda, y la opción sin pegar
+  (distancia 0, o casi 0 por redondeo) siempre ganaba. Ahora se elige el borde que de verdad tocó un punto de imán
+  (bordes de clips, cabezal, beats, inicio). También al mover una selección de varios clips y al tocar la regla.
+- **Las transiciones "no hacían nada":**
+  - Soltarla a más de 0.55 s del corte la aplicaba en silencio a otro clip (a veces el primero, que no tiene clip
+    antes). Ahora va al corte más cercano (~24 px) o, si cae encima de un clip, a su corte de entrada o salida; si no
+    hay ningún corte, la app lo dice.
+  - El clic (vista previa) se dibujaba en el cabezal y no se veía si el cabezal no estaba en el corte. Ahora la vista
+    previa repite en bucle el tramo del corte más cercano.
+  - Mensaje de confirmación: "Barrido en el corte de 3.0 s".
+
 ## [0.0.3] — 2026-10-22 · Beta
 Beta de arreglos de importación: **videos y audios de la PC que no se veían ni sonaban**. La app muestra "Beta 0.0.3".
 ### Arreglado
