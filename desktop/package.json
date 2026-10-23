@@ -30,6 +30,7 @@
       "updater.cjs",
       "media.cjs",
       "viewer.cjs",
+      "splash.cjs",
       "projects.cjs",
       "xai-oauth.cjs",
       "preload.cjs",

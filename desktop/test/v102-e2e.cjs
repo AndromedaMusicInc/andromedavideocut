@@ -30,7 +30,7 @@ const launch = async () => {
   ({ app, w } = await launch());
   await w.waitForSelector("[data-project]");
   const names = await w.$$eval("[data-project-name]", (n) => n.map((e) => e.textContent));
-  const ver = await app.evaluate(({ app, BrowserWindow }) => ({ v: app.getVersion(), t: BrowserWindow.getAllWindows()[0].getTitle() }));
+  const ver = await app.evaluate(({ app, BrowserWindow }) => ({ v: app.getVersion(), t: BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().includes("splash.html")).getTitle() }));
   check("versión 0.0.4 y título 'Beta 0.0.4'", ver.v === "0.0.4" && ver.t === "AndromedaVideoCut · Beta 0.0.4", JSON.stringify(ver));
   check("portada muestra Beta 0.0.4", /beta 0\.0\.4/i.test(await w.textContent("[data-version-label]")));
   await app.evaluate(({ shell }) => { global.__ig = []; shell.openExternal = async (u) => { global.__ig.push(u); }; });

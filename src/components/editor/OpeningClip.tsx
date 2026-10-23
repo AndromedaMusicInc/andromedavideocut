@@ -1,9 +1,10 @@
-// B17 · Opening clip: 1.6 s, se salta con clic o tecla, una vez por sesión, se apaga en Ajustes.
+// B17 · Pantalla de inicio (web; en PC la pone el proceso principal, desktop/splash.cjs): 1.6 s, se salta con clic o tecla, una vez por sesión, se apaga en Ajustes.
 import { useEffect, useState } from "react";
 import { claimOpening, OPENING_CAP_MS } from "@/lib/editor/opening";
 
 function decide() {
   if (typeof window === "undefined") return false;
+  if ((window as unknown as { avcDesktop?: unknown }).avcDesktop) return false; // PC: ventana splash nativa
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   let local: Storage | null = null;
   let session: Storage | null = null;
@@ -26,11 +27,7 @@ export function OpeningClip() {
   if (!show) return null;
   return (
     <div id="avc-open" data-opening-clip="" role="presentation" aria-label="Abriendo AndromedaVideoCut" onClick={() => setShow(false)}>
-      <div className="avc-stars" />
-      <div className="avc-ring" />
-      <img className="avc-mark" src="./brand/mark.png" alt="" />
-      <div className="avc-word"><b>Andromeda</b><span>VideoCut</span></div>
-      <div className="avc-beat"><i /><i /><i /><i /><i /></div>
+      <img src="./brand/splash.png" alt="AndromedaVideoCut" data-splash="" draggable={false} />
       <small className="avc-skip">Toca o pulsa una tecla para saltar</small>
     </div>
   );

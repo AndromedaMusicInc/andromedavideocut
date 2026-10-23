@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld("avcDesktop", {
     },
   },
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
+  settings: { setOpening: (on) => ipcRenderer.invoke("settings:opening", Boolean(on)) },
   showItemInFolder: (p) => ipcRenderer.invoke("file:show", String(p)),
   feedCache: (op, text) => ipcRenderer.invoke("feed:cache", op, text),
   ai: {

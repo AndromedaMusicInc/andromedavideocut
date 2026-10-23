@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- B17 · Pantalla de inicio (PC). La abre desktop/splash.cjs; clic o tecla la cierra. -->
+<html lang="es"><head><meta charset="utf-8"><title>AndromedaVideoCut</title>
+<style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none}
+body{display:grid;place-items:center;cursor:pointer}
+img{width:480px;height:540px;display:block;-webkit-user-drag:none;opacity:0;animation:in .2s ease-out forwards}
+html.out img{animation:none;opacity:0;transition:opacity .25s ease-in}
+@keyframes in{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){img{animation:none;opacity:1}}
+</style></head>
+<body><img src="./brand/splash.png" alt="AndromedaVideoCut" data-splash="">
+<script>
+function bye(){document.documentElement.classList.add('out');setTimeout(function(){window.close()},260)}
+addEventListener('click',bye);addEventListener('keydown',bye);
+</script></body></html>

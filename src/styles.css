@@ -62,28 +62,10 @@
 }
 [data-editor] input, [data-editor] textarea, [data-editor] [contenteditable] { user-select: text; }
 
-/* B17 · Opening clip (VideoCut · Visual). CSS puro, 1.6 s. */
-#avc-open{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;align-content:center;gap:14px;
-  background:radial-gradient(circle at 50% 45%,#1d1230 0,#0B0B12 60%);color:#fff;font-family:inherit;
-  animation:avc-out .3s ease-in 1.3s forwards;cursor:pointer}
-#avc-open .avc-stars{position:absolute;inset:0;opacity:0;background-image:radial-gradient(1px 1px at 20% 30%,#fff,transparent),
-  radial-gradient(1px 1px at 70% 20%,#D4AF37,transparent),radial-gradient(1px 1px at 40% 80%,#fff,transparent),
-  radial-gradient(1.5px 1.5px at 85% 65%,#7B3FE4,transparent);animation:avc-fade .6s ease-out .1s forwards}
-#avc-open .avc-ring{position:absolute;width:120px;height:120px;border:2px solid #D4AF37;border-radius:50%;top:calc(50% - 90px);
-  transform:scale(.4);opacity:0;animation:avc-pulse .7s cubic-bezier(.2,.8,.2,1) .35s}
-#avc-open .avc-mark{width:72px;height:72px;transform:scale(.6);opacity:0;filter:drop-shadow(0 0 14px rgba(123,63,228,.7));
-  animation:avc-pop .45s cubic-bezier(.3,1.6,.5,1) .15s forwards}
-#avc-open .avc-word{font-size:22px;letter-spacing:.02em;opacity:0;transform:translateY(8px);animation:avc-up .35s ease-out .5s forwards}
-#avc-open .avc-word span{color:#D4AF37;font-weight:800}
-#avc-open .avc-beat{display:flex;gap:4px;height:18px;align-items:flex-end}
-#avc-open .avc-beat i{width:4px;background:#7B3FE4;border-radius:2px;height:4px;animation:avc-eq .4s ease-in-out .6s 2 alternate}
-#avc-open .avc-beat i:nth-child(2n){background:#D4AF37;animation-delay:.68s}
-#avc-open .avc-beat i:nth-child(3){animation-delay:.75s}
+/* B17 · Pantalla de inicio (web): el PNG de Visual centrado sobre fondo oscuro, 1.6 s con fundido. */
+#avc-open{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#0B0B12;cursor:pointer;
+  animation:avc-out .3s ease-in 1.3s forwards}
+#avc-open img{width:min(480px,90vw);height:auto;aspect-ratio:480/540;opacity:0;animation:avc-in .2s ease-out forwards;-webkit-user-drag:none;user-select:none}
 #avc-open .avc-skip{position:absolute;bottom:24px;font-size:12px;color:#8A8A9A}
-@keyframes avc-pop{to{transform:scale(1);opacity:1}}
-@keyframes avc-pulse{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(1.6)}}
-@keyframes avc-up{to{opacity:1;transform:none}}
-@keyframes avc-fade{to{opacity:.8}}
-@keyframes avc-eq{to{height:18px}}
+@keyframes avc-in{to{opacity:1}}
 @keyframes avc-out{to{opacity:0;visibility:hidden}}
-@media (prefers-reduced-motion:reduce){#avc-open,#avc-open *{animation-duration:.01s!important}}

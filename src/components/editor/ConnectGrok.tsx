@@ -229,14 +229,20 @@ function OpeningToggle() {
     <label data-opening-toggle="" className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-md border border-line bg-sunken p-3 text-sm text-fg">
       <span>
         Animación de inicio
-        <span className="block text-xs text-muted">El clip corto con el logo al abrir la app (una vez por sesión).</span>
+        <span className="block text-xs text-muted">La pantalla con el logo al abrir la app (una vez por sesión).</span>
       </span>
       <input
         type="checkbox"
         role="switch"
         aria-checked={on}
         checked={on}
-        onChange={(e) => { setOpeningEnabled(store(), e.target.checked); setOn(e.target.checked); }}
+        onChange={(e) => {
+          const v = e.target.checked;
+          setOpeningEnabled(store(), v);
+          // PC: el proceso principal lee userData/settings.json antes de abrir la ventana.
+          void (window as unknown as { avcDesktop?: { settings?: { setOpening?: (on: boolean) => Promise<unknown> } } }).avcDesktop?.settings?.setOpening?.(v);
+          setOn(v);
+        }}
         className="size-5 accent-[var(--color-accent,#D4AF37)]"
       />
     </label>

@@ -1,6 +1,12 @@
 // AndromedaVideoCut para escritorio: ventana Electron que sirve el build estático
 // por un protocolo propio (app://), porque los módulos ES no cargan desde file://.
-const { app, BrowserWindow, shell, Menu, protocol, net, dialog, ipcMain, screen } = require("electron");
+const { app, BrowserWindow, shell, Menu, protocol, net, dialog, ipcMain, screen, systemPreferences } = require("electron");
+const splash = require("./splash.cjs");
+let primaryWin = null;
+let mainCommitted = false;
+let afterMainCommit = null;
+let splashRef = null;
+const mainWindow = () => (primaryWin && !primaryWin.isDestroyed() ? primaryWin : BrowserWindow.getAllWindows().find((w) => !splashRef || w !== splashRef.win) || null);
 const { registerXaiIpc } = require("./xai-oauth.cjs");
 const { registerProjectsIpc } = require("./projects.cjs");
 const viewer = require("./viewer.cjs");
@@ -78,7 +84,7 @@ function allowAudioDevices() {
 
 /** Muestra el estado del audio (para soporte) y permite copiarlo. */
 async function audioDiagnostics() {
-  const win = BrowserWindow.getAllWindows()[0];
+  const win = mainWindow();
   if (!win) return;
   const js = `(async () => {
     const a = window.__avcAudio ? window.__avcAudio.info() : { state: "sin-iniciar" };
@@ -119,6 +125,7 @@ function createWindow() {
     minHeight: 640,
     title: appTitle(),
     backgroundColor: "#0c0c0e",
+    show: false, // se muestra en ready-to-show (mientras, la pantalla de inicio)
     icon: path.join(ROOT, "brand", "favicon-180.png"),
     autoHideMenuBar: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true,
@@ -127,6 +134,14 @@ function createWindow() {
       autoplayPolicy: "no-user-gesture-required",
       backgroundThrottling: false,
     },
+  });
+  primaryWin = win;
+  win.webContents.once("did-navigate", () => { mainCommitted = true; afterMainCommit?.(); });
+  win.once("ready-to-show", () => {
+    win.show();
+    // AVC_SPLASH_MIN_MS: solo para pruebas (mantener la splash un rato para probar clic/tecla).
+    const hold = Number(process.env.AVC_SPLASH_MIN_MS || 0);
+    setTimeout(() => { if (splashRef) splashRef.close(true); }, hold);
   });
   win.loadURL("app://andromeda/index.html");
   // Enlaces externos van al navegador del sistema; nada abre ventanas nuevas.
@@ -149,7 +164,7 @@ function createWindow() {
 let updates = null;
 
 function mainWin() {
-  return BrowserWindow.getAllWindows().find((w) => w !== viewer.current()) || null;
+  return BrowserWindow.getAllWindows().find((w) => w !== viewer.current() && (!splashRef || w !== splashRef.win)) || null;
 }
 async function toggleViewer() {
   const w = mainWin();
@@ -229,7 +244,7 @@ function buildMenu() {
         {
           label: "Acerca de AndromedaVideoCut",
           click: () =>
-            dialog.showMessageBox(BrowserWindow.getAllWindows()[0], {
+            dialog.showMessageBox(mainWindow(), {
               type: "info",
               title: "Acerca de",
               message: `AndromedaVideoCut ${versionLabel()}`,
@@ -302,11 +317,22 @@ app.whenReady().then(() => {
   viewer.setOnChange(() => buildMenu());
   screen.on("display-added", () => buildMenu());
   screen.on("display-removed", () => buildMenu());
-  createWindow();
+  ipcMain.handle("settings:opening", (_e, on) => splash.setOpening(app.getPath("userData"), Boolean(on)).openingClip);
+  createWindow(); // primero la principal: es la "primera ventana" para las pruebas y el resto del código
+  if (splash.shouldShowSplash({ settings: splash.readSettings(app.getPath("userData")), reducedMotion: splash.prefersReducedMotion(systemPreferences) })) {
+    // Tras empezar a cargar la principal: así la principal es siempre la "primera ventana".
+    // Se abre cuando la principal ya navegó (sigue cargando): así la principal es siempre la "primera ventana".
+    afterMainCommit = () => {
+      if (mainWindow()?.isVisible()) return; // ya cargó: no hace falta
+      splashRef = splash.createSplash(BrowserWindow, "app://andromeda/splash.html", appTitle());
+      splashRef.win.on("closed", () => { splashRef = null; });
+    };
+    if (mainCommitted) afterMainCommit();
+  }
   initUpdates();
   if (process.env.AVC_SMOKE) {
     // Prueba de humo: captura la ventana y sale.
-    const win = BrowserWindow.getAllWindows()[0];
+    const win = mainWindow();
     win.webContents.on("console-message", (e) => console.log("[consola]", e.level, e.message));
     win.webContents.once("did-finish-load", () => {
       setTimeout(async () => {

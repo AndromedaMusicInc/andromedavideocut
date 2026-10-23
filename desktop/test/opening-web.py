@@ -1,4 +1,4 @@
-# B17 opening clip (web). Uso: python3 desktop/test/opening-web.py [url]
+# B17 pantalla de inicio (web): splash.png centrado sobre fondo oscuro. Uso: python3 desktop/test/opening-web.py [url]
 import sys, time
 from playwright.sync_api import sync_playwright
 U = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8123/"
@@ -12,7 +12,8 @@ with sync_playwright() as p:
     c = b.new_context(viewport={"width": 1280, "height": 800}); pg = c.new_page()
     t0 = time.time(); pg.goto(U); pg.wait_for_selector(SEL, timeout=5000)
     ok("aparece al abrir", pg.locator(SEL).count() == 1)
-    ok("logo /brand/mark.png carga", pg.evaluate("(()=>{const i=document.querySelector('#avc-open img');return i.complete&&i.naturalWidth>0})()") or (pg.wait_for_timeout(300) or pg.evaluate("document.querySelector('#avc-open img')?.naturalWidth>0")))
+    ok("splash.png (480x540) carga", pg.evaluate("(async()=>{const i=document.querySelector('#avc-open img');if(!i.complete)await new Promise(r=>i.onload=r);return i.naturalWidth===480&&i.naturalHeight===540&&i.getAttribute('src')==='./brand/splash.png'})()"))
+    ok("centrado sobre fondo oscuro", pg.evaluate("(()=>{const r=document.querySelector('#avc-open img').getBoundingClientRect();const bg=getComputedStyle(document.getElementById('avc-open')).backgroundColor;return Math.abs(r.left+r.width/2-innerWidth/2)<2&&Math.abs(r.top+r.height/2-innerHeight/2)<2&&bg==='rgb(11, 11, 18)'})()"))
     pg.wait_for_selector(SEL, state="detached", timeout=4000); dt = time.time() - t0
     ok("se va solo en ≤ ~1.7 s", dt < 3.5, f"{dt:.2f}s desde goto")
     ok("deja ver el Inicio", pg.locator("[data-open-settings]").first.is_visible())
