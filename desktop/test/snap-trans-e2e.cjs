@@ -12,7 +12,7 @@ async function dragLoc(w, loc, x, y) { const b = await loc.boundingBox(); await 
   fs.rmSync(UD, { recursive: true, force: true });
   const app = await _electron.launch({ executablePath: require(path.join(__dirname, "../node_modules/electron")), args: [path.join(__dirname, ".."), `--user-data-dir=${UD}`, "--no-sandbox"] });
   const w = await app.firstWindow(); await w.setViewportSize({ width: 1440, height: 900 }); await sleep(3000);
-  check("versión 0.0.4", /0\.0\.4/.test(await w.title()), await w.title());
+  const VER = require("../package.json").version; check(`versión ${VER}`, (await w.title()).includes(VER), await w.title());
   // --- Imán (proyecto demo) ---
   await w.getByText("Mi primer reel").first().waitFor(); await w.mouse.click(300, 250); await sleep(3000);
   const cut = (await box(w, "d-tide"))[0]; const st = await box(w, "d-spar");
