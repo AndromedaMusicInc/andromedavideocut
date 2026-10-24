@@ -1,3 +1,4 @@
+import { isTrackHidden } from "@/lib/editor/types";
 import type { Asset, Clip } from "@/lib/editor/types";
 
 export function contentEnd(clips: Clip[]) {
@@ -88,7 +89,7 @@ export function snapTo(time: number, points: number[], pps: number) {
 export function joinClips(clips: Clip[]) {
   const out: Clip[] = [];
   const rows = new Map<string, Clip[]>();
-  for (const c of clips) if ((c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled) rows.set(c.trackId, [...(rows.get(c.trackId) ?? []), c]);
+  for (const c of clips) if ((c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled && !isTrackHidden(c.trackId)) rows.set(c.trackId, [...(rows.get(c.trackId) ?? []), c]);
   for (const row of rows.values()) {
     row.sort((a, b) => a.start - b.start);
     for (let i = 1; i < row.length; i += 1) {

@@ -10,6 +10,7 @@ export interface SavedProject {
   aspect: AspectId;
   clips: Clip[];
   muted: Record<string, boolean>;
+  hidden?: Record<string, boolean>;
   assets: Omit<Asset, "url">[];
   beats?: number[];
   bpm?: number;
@@ -81,6 +82,7 @@ export function saveProject(project: {
   aspect: AspectId;
   clips: Clip[];
   muted: Record<string, boolean>;
+  hidden?: Record<string, boolean>;
   assets: Asset[];
   beats?: number[];
   bpm?: number;

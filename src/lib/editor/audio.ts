@@ -1,3 +1,4 @@
+import { isTrackHidden } from "@/lib/editor/types";
 import type { Clip } from "@/lib/editor/types";
 import { audioEnvelope } from "@/lib/editor/time";
 
@@ -344,7 +345,7 @@ export class Mixer {
     if (!this.ctx || !this.master) return;
     const now = this.ctx.currentTime + 0.04;
     for (const clip of clips) {
-      if (muted[clip.trackId] || clip.disabled) continue;
+      if (muted[clip.trackId] || clip.disabled || isTrackHidden(clip.trackId)) continue;
       const buffer = this.bufferFor(clip);
       if (!buffer) continue;
       const delay = clip.start - time;
@@ -387,7 +388,7 @@ export class Mixer {
     for (const node of this.active) {
       const clip = byId.get(node.clipId);
       if (!clip) continue;
-      const mute = muted[clip.trackId] ? 0 : 1;
+      const mute = muted[clip.trackId] || isTrackHidden(clip.trackId) ? 0 : 1;
       node.gain.gain.value = mute * clip.volume * audioEnvelope(clip, time);
     }
   }

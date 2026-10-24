@@ -820,7 +820,17 @@ export const DEMO_CLIPS: Clip[] = [
   }),
 ];
 
-/** Clips activos (sin los desactivados con V). */
-export function liveClips<T extends { disabled?: boolean }>(clips: T[]): T[] {
-  return clips.some((c) => c.disabled) ? clips.filter((c) => !c.disabled) : clips;
+/** Pistas ocultas con el ojito (las fija el store). No se ven ni se oyen en visor ni exportación. */
+let hiddenTracks: ReadonlySet<string> = new Set();
+export function setHiddenTracks(map: Record<string, boolean>) {
+  hiddenTracks = new Set(Object.keys(map).filter((k) => map[k]));
+}
+export function isTrackHidden(trackId: string) {
+  return hiddenTracks.has(trackId);
+}
+
+/** Clips activos (sin los desactivados con V ni los de pistas ocultas). */
+export function liveClips<T extends { disabled?: boolean; trackId?: string }>(clips: T[]): T[] {
+  const off = (c: T) => c.disabled || (c.trackId !== undefined && hiddenTracks.has(c.trackId));
+  return clips.some(off) ? clips.filter((c) => !off(c)) : clips;
 }

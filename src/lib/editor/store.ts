@@ -38,6 +38,8 @@ import {
   type ToolId,
   type TransitionId,
   TRANSITIONS,
+  isTrackHidden,
+  setHiddenTracks,
 } from "@/lib/editor/types";
 import { create } from "zustand";
 
@@ -48,6 +50,7 @@ export interface Hist {
   layers: number;
   fxCount: number;
   trackOrder: string[];
+  hidden?: Record<string, boolean>;
 }
 
 export interface EditorState {
@@ -68,6 +71,9 @@ export interface EditorState {
   moveSelection: (ids: string[], origStarts: Record<string, number>, dx: number) => void;
   tool: ToolId;
   muted: Record<string, boolean>;
+  /** Pistas ocultas (ojito): fuera del visor, la exportación y el audio. */
+  hidden: Record<string, boolean>;
+  toggleHidden: (trackId: string) => void;
   beats: number[];
   bpm: number;
   downbeat: number;
@@ -155,6 +161,7 @@ function snap(state: EditorState): Hist {
     layers: state.layers,
     fxCount: state.fxCount,
     trackOrder: [...state.trackOrder],
+    hidden: { ...state.hidden },
   };
 }
 
@@ -184,6 +191,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   selectedIds: [],
   tool: "reel",
   muted: {},
+  hidden: {},
   beats: [],
   bpm: 0,
   downbeat: 0,
@@ -231,6 +239,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     const before = snap(get());
     set({ aspect, past: [...get().past, before].slice(-60), future: [] });
   },
+  toggleHidden: (trackId) => {
+    const before = snap(get());
+    const hidden = { ...get().hidden, [trackId]: !get().hidden[trackId] };
+    setHiddenTracks(hidden);
+    set({ hidden, past: [...get().past, before].slice(-60), future: [] });
+    restartAudio(get().clips, get().muted);
+  },
   toggleMute: (trackId) => {
     const muted = { ...get().muted, [trackId]: !get().muted[trackId] };
     set({ muted });
@@ -257,6 +272,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       layers: prev.layers,
       fxCount: prev.fxCount ?? 1,
       trackOrder: prev.trackOrder ?? ["t1", "o1", "fx1", "v1", "a1"],
+      hidden: (setHiddenTracks(prev.hidden ?? {}), prev.hidden ?? {}),
       past: past.slice(0, -1),
       future: [...get().future, cur],
     });
@@ -274,6 +290,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       layers: next.layers,
       fxCount: next.fxCount ?? 1,
       trackOrder: next.trackOrder ?? ["t1", "o1", "fx1", "v1", "a1"],
+      hidden: (setHiddenTracks(next.hidden ?? {}), next.hidden ?? {}),
       future: future.slice(0, -1),
       past: [...get().past, cur],
     });
@@ -837,6 +854,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       // Completa campos que falten (proyectos viejos o editados a mano) para que nada se rompa.
       clips: (saved.clips ?? []).filter((c) => c && c.id && c.type).map((c) => makeClip({ ...c, name: c.name ?? "Clip", start: Number(c.start) || 0, duration: Number(c.duration) || 1 })),
       muted: saved.muted ?? {},
+      hidden: (setHiddenTracks(saved.hidden ?? {}), saved.hidden ?? {}),
       assets: (saved.assets ?? []).map((asset) => ({ ...asset })),
       beats: saved.beats ?? [],
       bpm: saved.bpm ?? 0,
@@ -1187,7 +1205,7 @@ export function pickJoin(clips: Clip[], time: number, pps: number): Clip | null 
   }
   if (best) return best;
   const visualAt = clips.filter(
-    (c) => (c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled && time >= c.start && time < c.start + c.duration,
+    (c) => (c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled && !isTrackHidden(c.trackId) && time >= c.start && time < c.start + c.duration,
   );
   for (const hit of visualAt) {
     const own = joins.find((j) => j.id === hit.id);

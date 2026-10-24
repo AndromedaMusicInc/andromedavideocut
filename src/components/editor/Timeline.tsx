@@ -9,7 +9,7 @@ import { laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
 import type { Clip } from "@/lib/editor/types";
 import { TRANSITIONS } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
-import { Blend, Bookmark, Copy, Magnet, Pause, Plus, Repeat, Scissors, Trash2, Undo2, Redo2, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react";
+import { Blend, Bookmark, Copy, Eye, EyeOff, Magnet, Pause, Plus, Repeat, Scissors, Trash2, Undo2, Redo2, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 export function Timeline() {
@@ -34,6 +34,7 @@ export function Timeline() {
   const scroller = useRef<HTMLDivElement>(null);
   const [hot, setHot] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragPoint | null>(null);
+  const hiddenTracks = useEditor((s) => s.hidden);
   const [ghostTime, setGhostTime] = useState(0);
   const [gap, setGap] = useState<string | null>(null);
   const [ghostSpan, setGhostSpan] = useState(4);
@@ -291,11 +292,8 @@ export function Timeline() {
           <div className="h-7 border-b border-line" />
           {bands.map((band) =>
             band.kind === "insert" ? (
-              <div
-                key={band.key}
-                className="flex h-10 items-center bg-accent px-2 text-[10px] font-semibold text-accent-ink"
-              >
-                Nuevo
+              <div key={band.key} className="relative h-0" aria-hidden="true">
+                <div className="pointer-events-none absolute inset-x-0 -top-px h-0.5 bg-accent" />
               </div>
             ) : (
               <TrackHeader key={band.id} id={band.id} name={band.name} />
@@ -328,18 +326,21 @@ export function Timeline() {
                   data-insert=""
                   data-insert-mode={band.mode}
                   data-insert-anchor={band.anchor}
-                  className="relative h-10 border-y-2 border-accent bg-accent/30"
+                  data-insert-line=""
+                  className="relative z-20 h-0"
                 >
-                  <span className="pointer-events-none absolute top-1 right-2 z-10 rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-ink">
+                  {/* Línea fina de inserción: no abre un canal entero, solo marca dónde nacerá. */}
+                  <div className="pointer-events-none absolute inset-x-0 -top-px h-0.5 bg-accent shadow-[0_0_6px_var(--color-accent,#7c5cff)]" />
+                  <span className="pointer-events-none absolute -top-2.5 right-2 rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-ink">
                     Canal nuevo
                   </span>
-                  {drag ? <GhostBar pps={pps} time={ghostTime} span={ghostSpan} /> : null}
                 </div>
               ) : (
                 <div
                   key={band.id}
                   data-track={band.id}
-                  className={cn("relative h-10 border-b border-line", hot === band.id && "bg-accent/20 ring-1 ring-inset ring-accent")}
+                  data-hidden={hiddenTracks[band.id] ? "" : undefined}
+                  className={cn("relative h-10 border-b border-line", hiddenTracks[band.id] && "opacity-40", hot === band.id && "bg-accent/20 ring-1 ring-inset ring-accent")}
                   onPointerDown={(event) => {
                     if (event.target !== event.currentTarget) return;
                     pause();
@@ -483,17 +484,32 @@ function Tool({
 function TrackHeader({ id, name }: { id: string; name: string }) {
   const muted = useEditor((s) => Boolean(s.muted[id]));
   const toggleMute = useEditor((s) => s.toggleMute);
+  const hidden = useEditor((s) => Boolean(s.hidden[id]));
+  const toggleHidden = useEditor((s) => s.toggleHidden);
   return (
-    <button
-      type="button"
-      onClick={() => toggleMute(id)}
-      className="flex h-10 w-full items-center justify-between px-2 text-xs text-muted"
-      data-track={id}
-      aria-pressed={muted}
-    >
-      <span className="truncate">{name}</span>
-      {id === "t1" || id === "fx1" ? null : muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-    </button>
+    <div className={cn("flex h-10 w-full items-center", hidden && "opacity-60")}>
+      <button
+        type="button"
+        onClick={() => toggleMute(id)}
+        className="flex h-10 min-w-0 flex-1 items-center justify-between pl-2 pr-1 text-xs text-muted"
+        data-track={id}
+        aria-pressed={muted}
+      >
+        <span className="truncate">{name}</span>
+        {id === "t1" || id === "fx1" ? null : muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => toggleHidden(id)}
+        data-eye={id}
+        aria-pressed={hidden}
+        aria-label={hidden ? `Mostrar ${name}` : `Ocultar ${name}`}
+        title={hidden ? "Mostrar pista" : "Ocultar pista"}
+        className={cn("grid h-10 w-7 shrink-0 place-items-center", hidden ? "text-accent" : "text-muted hover:text-fg")}
+      >
+        {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+      </button>
+    </div>
   );
 }
 
