@@ -9,6 +9,17 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.5] — 2026-10-24 · Beta
+Beta con pantalla de inicio, ojito por pista y guía al arrastrar. La app muestra "Beta 0.0.5".
+### Agregado
+- **Pantalla de inicio estilo FL Studio (B17).** En PC: ventana propia sin bordes, transparente, centrada y siempre
+  encima, visible mientras carga la app; se cierra con un fundido cuando el editor está listo. En web: la misma imagen
+  centrada sobre fondo oscuro (1.6 s). Se salta con clic o cualquier tecla, sale una vez por sesión, no aparece si el
+  sistema tiene activado "reducir movimiento" y se apaga en **Ajustes → Animación de inicio**.
+- **Ojito por pista**: oculta o muestra una pista en el visor y en la exportación sin borrarla. Se guarda con el
+  proyecto y se puede deshacer.
+- **Línea fina de inserción** entre canales al arrastrar, para ver dónde se creará el canal nuevo.
+
 ## [0.0.4] — 2026-10-22 · Beta
 Beta de arreglos de la línea de tiempo: **el imán y las transiciones**. La app muestra "Beta 0.0.4".
 ### Arreglado

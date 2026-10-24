@@ -1,4 +1,4 @@
-// Beta 0.0.4 (antes 1.0.2) (incluye todo lo de 1.0.1): icono, botón Separar visor con monitores/pantalla completa/acoplar,
+// Beta 0.0.5 (antes 1.0.2) (incluye todo lo de 1.0.1): icono, botón Separar visor con monitores/pantalla completa/acoplar,
 // clic = vista previa, arrastrar = agrega, Ctrl+S guarda en disco, guardado al cambiar de proyecto, aviso si falla.
 // 1.0.1: migración 1.0.0 → proyectos, bienvenida, nuevo/renombrar/duplicar/borrar, guardado en disco,
 // feed (empaquetado y caché), audio (selector, vúmetro, Probar sonido) y exportación MP4 con AAC.
@@ -31,8 +31,8 @@ const launch = async () => {
   await w.waitForSelector("[data-project]");
   const names = await w.$$eval("[data-project-name]", (n) => n.map((e) => e.textContent));
   const ver = await app.evaluate(({ app, BrowserWindow }) => ({ v: app.getVersion(), t: BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().includes("splash.html")).getTitle() }));
-  check("versión 0.0.4 y título 'Beta 0.0.4'", ver.v === "0.0.4" && ver.t === "AndromedaVideoCut · Beta 0.0.4", JSON.stringify(ver));
-  check("portada muestra Beta 0.0.4", /beta 0\.0\.4/i.test(await w.textContent("[data-version-label]")));
+  check("versión 0.0.5 y título 'Beta 0.0.5'", ver.v === "0.0.5" && ver.t === "AndromedaVideoCut · Beta 0.0.5", JSON.stringify(ver));
+  check("portada muestra Beta 0.0.5", /beta 0\.0\.5/i.test(await w.textContent("[data-version-label]")));
   await app.evaluate(({ shell }) => { global.__ig = []; shell.openExternal = async (u) => { global.__ig.push(u); }; });
   check("Instagram: texto visible '@andromedavideocut'", (await w.textContent("[data-instagram]")).trim() === "@andromedavideocut");
   await w.click("[data-instagram]"); await sleep(300);
