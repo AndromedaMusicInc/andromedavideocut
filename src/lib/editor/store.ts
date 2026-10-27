@@ -1,3 +1,4 @@
+import { nudgeEnd, trimAt, trimTarget, type TrimOp } from "@/lib/editor/trim";
 import { mixer } from "@/lib/editor/audio";
 import { detectBeats, everyNth } from "@/lib/editor/beats";
 import { idbDelete, idbPut, type SavedProject } from "@/lib/editor/persist";
@@ -116,6 +117,7 @@ export interface EditorState {
   cutSelected: () => void;
   hasClipboard: () => boolean;
   toggleDisabled: () => void;
+  trimKey: (op: TrimOp | "nudge+" | "nudge-", t: number) => boolean;
   splitSelection: () => void;
   separateAudio: () => boolean;
   replaceAsset: (clipId: string, asset: Asset) => void;
@@ -498,6 +500,21 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     set({ clips, selectedId: added[0] ?? null, selectedIds: added.length > 1 ? added : [], past: [...get().past, before].slice(-60), future: [] });
     restartAudio(clips, get().muted);
+  },
+  trimKey: (op, t) => {
+    const st = get();
+    const target = op === "nudge+" || op === "nudge-"
+      ? st.clips.find((c) => c.id === st.selectedId) ?? null
+      : trimTarget(st.clips, st.selectedId, t, st.trackOrder);
+    if (!target) return false;
+    const clips = op === "nudge+" || op === "nudge-"
+      ? nudgeEnd(st.clips, st.assets, target.id, op === "nudge+" ? 1 : -1)
+      : trimAt(st.clips, st.assets, target.id, op, t);
+    if (!clips) return false;
+    const before = snap(st);
+    set({ clips, selectedId: target.id, past: [...st.past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
+    return true;
   },
   toggleDisabled: () => {
     const ids = new Set(get().selection());

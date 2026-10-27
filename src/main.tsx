@@ -4,6 +4,7 @@ import { Editor } from "@/components/editor/Editor";
 import { Welcome } from "@/components/editor/Welcome";
 import { OpeningClip } from "@/components/editor/OpeningClip";
 import { SuggestionBox } from "@/components/editor/SuggestionBox";
+import { ShortcutsSheet } from "@/components/editor/ShortcutsSheet";
 import type { ProjectMeta } from "@/lib/editor/projects";
 import type { ToolId } from "@/lib/editor/types";
 import "./styles.css";
@@ -23,5 +24,6 @@ createRoot(document.getElementById("root")!).render(
     <OpeningClip />
     <App />
     <SuggestionBox />
+    <ShortcutsSheet />
   </StrictMode>,
 );

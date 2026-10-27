@@ -35,6 +35,23 @@ try:
     pg.evaluate("window.__avcEditor.getState().setTool('media')"); pg.wait_for_timeout(500)
     lw = pg.evaluate("(()=>{const i=document.querySelector('img[alt=\"Andromeda Video\"]');return i?[i.getAttribute('src'),i.naturalWidth]:null})()")
     ok("logo de la biblioteca carga en /preview/ (ruta relativa)", lw and lw[1] > 0 and not lw[0].startswith("/"), lw)
+    # F1-10 · atajos
+    pg.mouse.click(5, 5); pg.keyboard.press("Shift+Slash"); pg.wait_for_timeout(200)
+    ok("? abre la hoja de atajos", pg.locator("[data-shortcuts]").count() == 1)
+    ok("hoja lista [ ] Q W", all(k in pg.inner_text("[data-shortcuts]") for k in ["Recortar inicio al cabezal", "cerrar hueco", "1 cuadro"]))
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(150); ok("Esc cierra la hoja", pg.locator("[data-shortcuts]").count() == 0)
+    pg.click("[data-help-menu]"); pg.click("[data-help-shortcuts]"); ok("Ayuda → Atajos abre la hoja", pg.locator("[data-shortcuts]").count() == 1)
+    pg.keyboard.press("Escape")
+    T = """(()=>{const s=window.__avcEditor.getState();const c=s.clips.filter(c=>c.duration>1.5&&!c.disabled).sort((a,b)=>a.start-b.start)[0];return c&&{id:c.id,start:c.start,dur:c.duration,inP:c.inPoint}})()"""
+    c0 = pg.evaluate(T)
+    def at(t): pg.evaluate(f"(()=>{{window.__avcEditor.setState({{selectedId:'{c0['id']}'}});window.__avcSeek({t})}})()"); pg.wait_for_timeout(100)
+    cl = lambda: pg.evaluate(f"window.__avcEditor.getState().clips.find(c=>c.id==='{c0['id']}')")
+    at(c0["start"] + 1.0); pg.keyboard.press("BracketRight"); d1 = cl()["duration"]
+    ok("] recorta el final al cabezal", abs(d1 - 1.0) < 0.05, d1)
+    pg.keyboard.press("Alt+Period"); d2 = cl()["duration"]; ok("Alt+. alarga 1 cuadro", abs(d2 - d1 - 1/30) < 0.005, d2 - d1)
+    pg.keyboard.press("Control+z"); pg.keyboard.press("Control+z"); ok("Ctrl+Z deshace los recortes", abs(cl()["duration"] - c0["dur"]) < 0.01, cl()["duration"])
+    at(c0["start"] + 0.5); pg.keyboard.press("KeyQ"); q = cl()
+    ok("Q recorta el inicio y deja el clip en su sitio", abs(q["start"] - c0["start"]) < 0.01 and abs(q["duration"] - (c0["dur"] - 0.5)) < 0.05, [q["start"], q["duration"]])
     ok("sin errores de página", not errs, errs[:2])
     ok("sin 404 (logo de la biblioteca incluido)", not [x for x in bad if "brand/" in x], [x for x in bad if "brand/" in x])
     b.close()

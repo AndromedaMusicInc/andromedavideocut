@@ -28,6 +28,13 @@ const only = (process.argv[2] || "feedback,shortcuts,autosave").split(",");
     await w.click("[data-open-feedback]"); check("PC: botón Sugerencias en Inicio", (await w.locator("[data-feedback]").count()) === 1);
     await w.click("[data-feedback] [aria-label=Cerrar]");
   }
+  if (only.includes("shortcuts")) {
+    await app.evaluate(({ Menu }) => { const help = Menu.getApplicationMenu().items.find((i) => i.label === "Ayuda"); help.submenu.items.find((i) => /Atajos/.test(i.label)).click(); });
+    await w.waitForSelector("[data-shortcuts]", { timeout: 3000 }).then(() => check("PC: Ayuda → Atajos de teclado abre la hoja", true), () => check("PC: Ayuda → Atajos de teclado abre la hoja", false));
+    await w.keyboard.press("Escape"); await sleep(200); check("PC: Esc cierra la hoja", (await w.locator("[data-shortcuts]").count()) === 0);
+    await w.keyboard.press("Shift+Slash"); await sleep(200); check("PC: ? abre la hoja", (await w.locator("[data-shortcuts]").count()) === 1);
+    await w.keyboard.press("Escape");
+  }
   if (global.__extra) await global.__extra({ app, w, check, sleep, launch, UD });
   await app.close();
   console.log(fails ? `FALLAS: ${fails}` : "TODO OK"); process.exit(fails ? 1 : 0);

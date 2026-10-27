@@ -280,6 +280,22 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         redo();
         return;
       }
+      // F1-10 · recortes al cabezal y por cuadro.
+      if (!event.metaKey && !event.ctrlKey) {
+        const k = event.key;
+        const op = k === "[" ? "start" : k === "]" ? "end" : k.toLowerCase() === "q" && !event.altKey ? "rippleStart" : k.toLowerCase() === "w" && !event.altKey ? "rippleEnd"
+          : event.altKey && (k === "," || k === "<") ? "nudge-" : event.altKey && (k === "." || k === ">") ? "nudge+" : null;
+        if (op) {
+          event.preventDefault();
+          if (!useEditor.getState().trimKey(op, playback.time)) useEditor.getState().tell("Pon el cabezal dentro de un clip para recortar.");
+          return;
+        }
+        if (!event.altKey && (k === "," || k === ".")) {
+          event.preventDefault();
+          seek(Math.max(0, playback.time + (k === "," ? -1 : 1) / 30));
+          return;
+        }
+      }
       if (event.key === " " || event.code === "Space") {
         event.preventDefault();
         togglePlay();
