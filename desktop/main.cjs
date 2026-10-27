@@ -231,6 +231,8 @@ function buildMenu() {
     {
       label: "Ayuda",
       submenu: [
+        { label: "Buzón de sugerencias…", click: () => mainWindow()?.webContents.send("menu", "feedback") },
+        { label: "Atajos de teclado", accelerator: "Shift+/", registerAccelerator: false, click: () => mainWindow()?.webContents.send("menu", "shortcuts") },
         { label: "Buscar actualizaciones…", click: () => updates?.check(true) },
         { label: "Diagnóstico de audio…", click: () => audioDiagnostics() },
         { type: "separator" },
@@ -286,7 +288,8 @@ function initUpdates() {
 app.whenReady().then(() => {
   process.env.AVC_APP_VERSION = app.getVersion();
   ipcMain.handle("open-external", (_e, url) => {
-    if (/^https:\/\//i.test(url)) return shell.openExternal(url);
+    // https o el mailto: del buzón de sugerencias (solo a nuestro correo).
+    if (/^https:\/\//i.test(url) || /^mailto:info@andromedamusicinc\.com\?/i.test(url)) return shell.openExternal(url);
   });
   // AVC_TEST_BROWSER=1: las pruebas simulan el navegador visitando la URL sin abrir nada.
   registerXaiIpc(process.env.AVC_TEST_BROWSER ? { testBrowser: (u) => { require("./test/fake-browser.cjs")(u); } } : {});

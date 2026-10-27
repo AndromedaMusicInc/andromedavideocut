@@ -38,6 +38,11 @@ contextBridge.exposeInMainWorld("avcDesktop", {
     },
   },
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
+  onMenu: (name, fn) => {
+    const h = (_e, n) => { if (n === name) fn(); };
+    ipcRenderer.on("menu", h);
+    return () => ipcRenderer.removeListener("menu", h);
+  },
   settings: { setOpening: (on) => ipcRenderer.invoke("settings:opening", Boolean(on)) },
   showItemInFolder: (p) => ipcRenderer.invoke("file:show", String(p)),
   feedCache: (op, text) => ipcRenderer.invoke("feed:cache", op, text),

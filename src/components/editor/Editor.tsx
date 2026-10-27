@@ -1,3 +1,4 @@
+import { HelpMenu } from "@/components/editor/SuggestionBox";
 import { reloadAssetAudio } from "@/lib/editor/audio-import";
 import { ClipMenu } from "@/components/editor/ClipMenu";
 import { Inspector } from "@/components/editor/Inspector";
@@ -449,6 +450,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
             </option>
           ))}
         </select>
+        <HelpMenu />
         <button
           type="button"
           data-open-settings=""
