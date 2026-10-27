@@ -3,7 +3,7 @@ import { mixer, waveformUrl } from "@/lib/editor/audio";
 import { pause, seek } from "@/lib/editor/engine";
 import { playback } from "@/lib/editor/playback";
 import { registerHitTest, subscribeDragPoint, setLaneIntent, readLaneIntent, publishDrag, commitLaneAt, registerLaneResolver, setCursorTag, type DragPoint } from "@/lib/editor/place";
-import { limitDuration, useEditor } from "@/lib/editor/store";
+import { limitDuration, pickJoin, useEditor } from "@/lib/editor/store";
 import { formatTime, findSlot, snapMove, snapTo, timelineSpan } from "@/lib/editor/time";
 import { LANE_INSERT_EDGE, laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
 import type { Clip } from "@/lib/editor/types";
@@ -177,11 +177,17 @@ export function Timeline() {
       );
       const box = scroller.current;
       const ppsNow = useEditor.getState().pps;
+      let transTag = "Soltar en el corte";
       if (box) {
         const rect = box.getBoundingClientRect();
         const raw = Math.max(0, (point.x - rect.left + box.scrollLeft) / ppsNow);
         const state = useEditor.getState();
-        if (point.kind === "transition") setGhostTime(nearestJoin(state.clips, raw));
+        if (point.kind === "transition") {
+          // Misma regla que al soltar (pickJoin): solo cortes reales de la misma pista, sin pistas ocultas ni clips desactivados.
+          const join = pickJoin(state.clips, raw, ppsNow);
+          setGhostTime(join ? join.start : raw);
+          transTag = join ? "Soltar en el corte" : "Aquí no hay un corte entre dos clips";
+        }
         else if (point.kind === "video") {
           const selected = state.clips.find((clip) => clip.id === state.selectedId);
           setGhostTime(selected ? selected.start : raw);
@@ -196,7 +202,7 @@ export function Timeline() {
         setGap(null);
         setHot(null);
         setDrag(point);
-        setCursorTag(point.kind === "transition" ? "Soltar en el corte" : "Suelta en la línea de tiempo", point.x, point.y);
+        setCursorTag(point.kind === "transition" ? transTag : "Suelta en la línea de tiempo", point.x, point.y);
         return;
       }
       const intent = resolve(point.y);
@@ -398,20 +404,6 @@ function trackLabel(id: string) {
   return "Canal";
 }
 
-function nearestJoin(clips: Clip[], time: number) {
-  let best = time;
-  let bestDist = 0.55;
-  for (const clip of clips) {
-    if (clip.type !== "video" && clip.type !== "image" && clip.type !== "generator") continue;
-    if (clip.start < 0.05) continue;
-    const dist = Math.abs(clip.start - time);
-    if (dist < bestDist) {
-      best = clip.start;
-      bestDist = dist;
-    }
-  }
-  return best;
-}
 
 function Joins({ trackId, pps }: { trackId: string; pps: number }) {
   const clips = useEditor((s) => s.clips);

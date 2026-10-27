@@ -101,3 +101,37 @@ export function joinClips(clips: Clip[]) {
   return out;
 }
 
+
+/**
+ * Elige el corte donde cae una transición soltada en `time`.
+ * 1) El corte más cercano dentro de ~24 px (mín. 0.55 s).
+ * 2) Si cayó encima de un clip: su corte de entrada, o si no tiene, el de salida.
+ * Antes, fuera de 0.55 s se aplicaba al clip seleccionado/bajo el cabezal (a veces el primero,
+ * sin clip antes), y parecía que la transición "no hacía nada".
+ */
+export function pickJoin(clips: Clip[], time: number, pps: number): Clip | null {
+  const joins = joinClips(clips);
+  if (!joins.length) return null;
+  const reach = Math.max(0.55, 24 / Math.max(pps, 1));
+  let best: Clip | null = null;
+  let bestDist = reach;
+  for (const clip of joins) {
+    const dist = Math.abs(clip.start - time);
+    if (dist < bestDist) {
+      best = clip;
+      bestDist = dist;
+    }
+  }
+  if (best) return best;
+  const visualAt = clips.filter(
+    (c) => (c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled && !isTrackHidden(c.trackId) && time >= c.start && time < c.start + c.duration,
+  );
+  for (const hit of visualAt) {
+    const own = joins.find((j) => j.id === hit.id);
+    if (own) return own;
+    const next = joins.find((j) => j.trackId === hit.trackId && Math.abs(j.start - (hit.start + hit.duration)) <= 0.25);
+    if (next) return next;
+  }
+  return null;
+}
+

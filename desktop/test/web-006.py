@@ -3,8 +3,8 @@ import sys, subprocess, time, json
 from urllib.parse import urlparse, parse_qs
 from playwright.sync_api import sync_playwright
 PORT = sys.argv[1] if len(sys.argv) > 1 else "18740"
-srv = subprocess.Popen(["python3", "-m", "http.server", PORT, "-d", "preview"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
-U = f"http://127.0.0.1:{PORT}/preview/" if False else f"http://127.0.0.1:{PORT}/"
+srv = subprocess.Popen(["python3", "-m", "http.server", PORT, "-d", "."], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
+U = f"http://127.0.0.1:{PORT}/preview/"  # subruta, como en GitHub Pages
 R = []
 def ok(n, c, d=""): R.append(bool(c)); print("OK   " if c else "FALLA", n, ("— " + str(d)) if d != "" else "")
 try:
@@ -32,6 +32,9 @@ try:
     pg.click("[data-open-project]"); pg.wait_for_selector("[data-timeline]"); pg.wait_for_timeout(600)
     pg.click("[data-help-menu]"); pg.click("[data-help-feedback]"); ok("Ayuda (editor) → Buzón", pg.locator("[data-feedback]").count() == 1)
     pg.click("[data-feedback] [aria-label=Cerrar]")
+    pg.evaluate("window.__avcEditor.getState().setTool('media')"); pg.wait_for_timeout(500)
+    lw = pg.evaluate("(()=>{const i=document.querySelector('img[alt=\"Andromeda Video\"]');return i?[i.getAttribute('src'),i.naturalWidth]:null})()")
+    ok("logo de la biblioteca carga en /preview/ (ruta relativa)", lw and lw[1] > 0 and not lw[0].startswith("/"), lw)
     ok("sin errores de página", not errs, errs[:2])
     ok("sin 404 (logo de la biblioteca incluido)", not [x for x in bad if "brand/" in x], [x for x in bad if "brand/" in x])
     b.close()

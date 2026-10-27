@@ -142,7 +142,7 @@ export function Library({ rail = true }: { rail?: boolean }) {
       <div className="scroll min-w-0 flex-1 overflow-y-auto p-3">
         {rail && tool !== "reel" ? (
           <img
-            src="/brand/lockup.png"
+            src={`${import.meta.env.BASE_URL}brand/lockup.png`}
             alt="Andromeda Video"
             className="mb-3 h-auto w-full object-contain"
           />
