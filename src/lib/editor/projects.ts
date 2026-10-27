@@ -2,6 +2,7 @@
 // Escritorio: archivos JSON en userData/projects (vía IPC). Web: localStorage.
 // Los archivos multimedia siguen en IndexedDB por id de recurso (en Electron también vive en userData).
 import { idbDelete, idbGet, idbPut, type SavedProject } from "@/lib/editor/persist";
+import { deleteVersions } from "@/lib/editor/versions";
 import { DEMO_CLIPS, type AspectId, type Clip } from "@/lib/editor/types";
 
 export const LEGACY_KEY = "framecut.project.v1";
@@ -137,6 +138,7 @@ export async function deleteProject(id: string) {
   const d = desktop();
   if (d) await d.remove(id);
   else {
+    await deleteVersions(id);
     localStorage.removeItem(DATA_KEY(id));
     lsSetIndex(lsIndex().filter((p) => p.id !== id));
   }

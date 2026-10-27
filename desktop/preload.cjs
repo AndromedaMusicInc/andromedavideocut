@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 contextBridge.exposeInMainWorld("avcDesktop", {
   version: process.env.AVC_APP_VERSION || "",
   openExternal: (url) => ipcRenderer.invoke("open-external", String(url)),
+  versions: {
+    list: (id) => ipcRenderer.invoke("versions:list", id),
+    save: (id, meta, data) => ipcRenderer.invoke("versions:save", id, meta, data),
+    read: (id, ts) => ipcRenderer.invoke("versions:read", id, ts),
+    remove: (id, ts) => ipcRenderer.invoke("versions:remove", id, ts),
+  },
   projects: {
     list: () => ipcRenderer.invoke("projects:list"),
     read: (id) => ipcRenderer.invoke("projects:read", id),

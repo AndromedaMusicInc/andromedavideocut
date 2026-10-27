@@ -88,6 +88,7 @@ export function HelpMenu() {
         <div role="menu" className="absolute right-0 top-12 z-50 w-56 rounded-md border border-line bg-raised p-1 shadow-lg" onMouseLeave={() => setOpen(false)}>
           <button type="button" role="menuitem" data-help-feedback="" onClick={() => { setOpen(false); useFeedback.getState().show(); }} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-surface">Buzón de sugerencias…</button>
           <button type="button" role="menuitem" data-help-shortcuts="" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent("avc:shortcuts")); }} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-surface">Atajos de teclado <span className="float-right text-muted">?</span></button>
+          <button type="button" role="menuitem" data-help-versions="" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent("avc:versions")); }} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-surface">Historial de versiones…</button>
         </div>
       ) : null}
     </div>

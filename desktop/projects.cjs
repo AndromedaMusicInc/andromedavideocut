@@ -8,11 +8,25 @@ const dir = () => path.join(app.getPath("userData"), "projects");
 const idOk = (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(id);
 const MAX = 50 * 1024 * 1024;
 
-function atomic(file, text) {
+function atomic(file, text, keepBak = false) {
   const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, text);
+  // fsync antes del rename: si se corta la luz, o queda el archivo viejo o el nuevo completo.
+  const fd = fs.openSync(tmp, "w");
+  try { fs.writeSync(fd, text); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+  // F1-01: copia del último guardado bueno, por si el principal se daña.
+  if (keepBak && fs.existsSync(file)) { try { fs.copyFileSync(file, `${file}.bak`); } catch { /* sigue */ } }
   fs.renameSync(tmp, file);
 }
+function readJson(file) {
+  for (const f of [file, `${file}.bak`]) {
+    try {
+      const d = JSON.parse(fs.readFileSync(f, "utf8"));
+      if (d && Array.isArray(d.clips)) return d;
+    } catch { /* prueba la copia */ }
+  }
+  return null;
+}
+const hdir = (id) => path.join(dir(), "history", id);
 function readIndex() {
   try {
     const list = JSON.parse(fs.readFileSync(path.join(dir(), "index.json"), "utf8"));
@@ -40,10 +54,46 @@ function registerProjectsIpc() {
   ipcMain.handle("projects:list", () => readIndex());
   ipcMain.handle("projects:read", (_e, id) => {
     if (!idOk(id)) return null;
+    return readJson(path.join(dir(), `${id}.json`));
+  });
+  // F1-01 · historial de versiones
+  const tsOk = (ts) => Number.isSafeInteger(ts) && ts > 0;
+  ipcMain.handle("versions:list", (_e, id) => {
+    if (!idOk(id)) return [];
     try {
-      return JSON.parse(fs.readFileSync(path.join(dir(), `${id}.json`), "utf8"));
+      return JSON.parse(fs.readFileSync(path.join(hdir(id), "index.json"), "utf8"));
     } catch {
-      return null;
+      return [];
+    }
+  });
+  ipcMain.handle("versions:save", (_e, id, meta, data) => {
+    if (!idOk(id) || !meta || !tsOk(meta.ts) || !data) return false;
+    try {
+      const text = JSON.stringify(data);
+      if (text.length > MAX) return false;
+      fs.mkdirSync(hdir(id), { recursive: true });
+      atomic(path.join(hdir(id), `${meta.ts}.json`), text);
+      let list = [];
+      try { list = JSON.parse(fs.readFileSync(path.join(hdir(id), "index.json"), "utf8")); } catch { /* nuevo */ }
+      const m = { ts: meta.ts, reason: String(meta.reason).slice(0, 12), bytes: text.length, clips: Number(meta.clips) || 0 };
+      atomic(path.join(hdir(id), "index.json"), JSON.stringify([m, ...list.filter((v) => v.ts !== m.ts)]));
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  ipcMain.handle("versions:read", (_e, id, ts) => (idOk(id) && tsOk(ts) ? readJson(path.join(hdir(id), `${ts}.json`)) : null));
+  ipcMain.handle("versions:remove", (_e, id, list) => {
+    if (!idOk(id) || !Array.isArray(list)) return false;
+    try {
+      const drop = new Set(list.filter(tsOk));
+      for (const ts of drop) fs.rmSync(path.join(hdir(id), `${ts}.json`), { force: true });
+      let idx = [];
+      try { idx = JSON.parse(fs.readFileSync(path.join(hdir(id), "index.json"), "utf8")); } catch { /* nada */ }
+      atomic(path.join(hdir(id), "index.json"), JSON.stringify(idx.filter((v) => !drop.has(v.ts))));
+      return true;
+    } catch {
+      return false;
     }
   });
   ipcMain.handle("projects:write", (_e, meta, data) => {
@@ -52,7 +102,7 @@ function registerProjectsIpc() {
       if (data) {
         const text = JSON.stringify(data);
         if (text.length > MAX) return false;
-        atomic(path.join(dir(), `${meta.id}.json`), text);
+        atomic(path.join(dir(), `${meta.id}.json`), text, true);
       }
       const list = readIndex().filter((p) => p.id !== meta.id);
       atomic(path.join(dir(), "index.json"), JSON.stringify([cleanMeta(meta), ...list]));
@@ -64,6 +114,8 @@ function registerProjectsIpc() {
   ipcMain.handle("projects:remove", (_e, id) => {
     if (!idOk(id)) return false;
     fs.rmSync(path.join(dir(), `${id}.json`), { force: true });
+    fs.rmSync(path.join(dir(), `${id}.json.bak`), { force: true });
+    fs.rmSync(hdir(id), { recursive: true, force: true });
     atomic(path.join(dir(), "index.json"), JSON.stringify(readIndex().filter((p) => p.id !== id)));
     return true;
   });
