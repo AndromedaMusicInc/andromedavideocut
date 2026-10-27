@@ -5,7 +5,7 @@ import { playback } from "@/lib/editor/playback";
 import { registerHitTest, subscribeDragPoint, setLaneIntent, readLaneIntent, publishDrag, commitLaneAt, registerLaneResolver, setCursorTag, type DragPoint } from "@/lib/editor/place";
 import { limitDuration, useEditor } from "@/lib/editor/store";
 import { formatTime, findSlot, snapMove, snapTo, timelineSpan } from "@/lib/editor/time";
-import { laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
+import { LANE_INSERT_EDGE, laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
 import type { Clip } from "@/lib/editor/types";
 import { TRANSITIONS } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
@@ -106,7 +106,7 @@ export function Timeline() {
       const slotEl = document.querySelector("[data-timeline] .lanes [data-insert]") as HTMLElement | null;
       if (slotEl) {
         const slot = slotEl.getBoundingClientRect();
-        if (y >= slot.top - 16 && y <= slot.bottom + 16) {
+        if (y >= slot.top - 8 && y <= slot.bottom + 8) {
           const mode = (slotEl.getAttribute("data-insert-mode") === "after" ? "after" : "before") as "before" | "after";
           const trackId = slotEl.getAttribute("data-insert-anchor");
           if (trackId) {
@@ -116,11 +116,16 @@ export function Timeline() {
         }
       }
       const rowsEl = [...document.querySelectorAll("[data-timeline] .lanes [data-track]")] as HTMLElement[];
+      // Solo la parte VISIBLE de cada canal (la barra de desplazamiento puede tapar el borde de abajo del último).
+      const view = scroller.current?.parentElement?.getBoundingClientRect();
+      const visBottom = view ? view.top + (scroller.current!.parentElement!.clientHeight || view.height) : Infinity;
       const rows = rowsEl.map((el) => {
         const rect = el.getBoundingClientRect();
-        return { id: el.getAttribute("data-track") || "", top: rect.top, bottom: rect.bottom };
+        return { id: el.getAttribute("data-track") || "", top: rect.top, bottom: Math.min(rect.bottom, visBottom) };
       });
-      const decided = laneIntentFromBands(rows, y, null, slotEl ? 8 : 14);
+      // Borde de 6 px: solo muy cerca de la raya entre canales se inserta un canal nuevo. Con 14 px (de un canal de 40)
+      // casi todo el canal contaba como "insertar" y el clip iba a un canal nuevo en vez del canal donde se soltó.
+      const decided = laneIntentFromBands(rows, y, null, LANE_INSERT_EDGE);
       if (hold && hold.mode !== "on" && decided.mode === "on" && Math.abs(y - hold.y) < 12) {
         return { mode: hold.mode, trackId: hold.trackId };
       }
@@ -139,8 +144,10 @@ export function Timeline() {
       }
       const rect = row.getBoundingClientRect();
       const before = row.scrollTop;
-      if (point.y > rect.bottom - 56) row.scrollTop += 22;
-      else if (point.y < rect.top + 36) row.scrollTop -= 22;
+      // Zona de autodesplazamiento solo en el borde (16 px). Con 56 px, al pasar por el ÚLTIMO canal la lista se
+      // desplazaba sola, el cursor quedaba en la línea de inserción y se creaba un canal nuevo en vez de usar ese canal.
+      if (point.y > rect.bottom - 16) row.scrollTop += 22;
+      else if (point.y < rect.top + 12) row.scrollTop -= 22;
       if (row.scrollTop !== before) {
         const shell = document.querySelector("[data-timeline]")?.getBoundingClientRect();
         const inside = Boolean(shell && point.x >= shell.left && point.x <= shell.right && point.y >= shell.top && point.y <= shell.bottom);
@@ -310,7 +317,8 @@ export function Timeline() {
             useEditor.getState().select(null);
           }}
         >
-          <div className="lanes relative" style={{ width }}>
+          {/* pb-6: espacio bajo el último canal (soltar ahí = canal nuevo) para que el último canal nunca quede bajo la barra de desplazamiento */}
+          <div className="lanes relative pb-6" style={{ width }}>
             <Ruler
               pps={pps}
               span={timelineSpan(clips)}

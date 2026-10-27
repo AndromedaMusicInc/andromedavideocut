@@ -37,6 +37,8 @@ function sourceProps(item: DragItem, preview?: PreviewItem) {
   const key = previewKey(item);
   return {
     "data-lib-item": key,
+    // Sin esto, agarrar la miniatura (<img>) inicia el arrastre nativo del navegador, cancela el puntero y no se agrega nada.
+    onDragStart: (event: { preventDefault(): void }) => event.preventDefault(),
     onPointerDown: (event: ReactPointerEvent) => {
       startLibraryDrag(event.nativeEvent, item.kind, (hit) => {
         useLibPreview.getState().clear();
@@ -59,6 +61,8 @@ function fxProps(preview: PreviewItem, onDrop: ((hit: DropHit) => void) | null, 
   const key = `${preview.kind}:${"id" in preview ? preview.id : ""}`;
   return {
     "data-lib-item": key,
+    // Sin esto, agarrar la miniatura (<img>) inicia el arrastre nativo del navegador, cancela el puntero y no se agrega nada.
+    onDragStart: (event: { preventDefault(): void }) => event.preventDefault(),
     onPointerDown: (event: ReactPointerEvent) => {
       if (!onDrop) return;
       startLibraryDrag(event.nativeEvent, dragKind, (hit) => {
