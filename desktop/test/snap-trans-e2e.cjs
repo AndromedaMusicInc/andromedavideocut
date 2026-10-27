@@ -28,7 +28,10 @@ async function dragLoc(w, loc, x, y) { const b = await loc.boundingBox(); await 
   await w.locator("input[type=file]").first().setInputFiles([path.join(DIR, "red.mp4"), path.join(DIR, "blue.mp4")]); await sleep(8000);
   const tl = await w.locator("[data-timeline]").boundingBox();
   const assets = w.locator('[data-lib-item^="asset:"]:visible');
-  await dragLoc(w, assets.nth(0), 200, tl.y + 150);
+  // Importar ya pone los dos videos seguidos en v1. Antes este arrastre no hacía nada (bug de la miniatura, arreglado en 0.0.6)
+  // y caía a 3 px de la línea fx1|v1 = línea de inserción → canal nuevo, que es lo correcto. Solo se arrastra si faltan.
+  let clips0 = await w.locator("[data-clip]").count();
+  if (clips0 < 1) await dragLoc(w, assets.nth(0), 200, (await w.locator('[data-track="v1"]').first().boundingBox()).y + 20);
   let clips = await w.evaluate(() => [...document.querySelectorAll("[data-clip]")].map((e) => { const r = e.getBoundingClientRect(); return [e.dataset.clipType, e.closest("[data-track]")?.dataset.track, r.left, r.right, r.top]; }));
   if (clips.length < 2) { await dragLoc(w, assets.nth(1), clips[0][3] + 60, clips[0][4] + 15); clips = await w.evaluate(() => [...document.querySelectorAll("[data-clip]")].map((e) => { const r = e.getBoundingClientRect(); return [e.dataset.clipType, e.closest("[data-track]")?.dataset.track, r.left, r.right, r.top]; })); }
   check("dos videos seguidos en v1", clips.length === 2 && clips.every((c) => c[1] === "v1"), JSON.stringify(clips.map((c) => [c[1], Math.round(c[2]), Math.round(c[3])])));

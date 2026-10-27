@@ -31,8 +31,9 @@ const launch = async () => {
   await w.waitForSelector("[data-project]");
   const names = await w.$$eval("[data-project-name]", (n) => n.map((e) => e.textContent));
   const ver = await app.evaluate(({ app, BrowserWindow }) => ({ v: app.getVersion(), t: BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().includes("splash.html")).getTitle() }));
-  check("versión 0.0.5 y título 'Beta 0.0.5'", ver.v === "0.0.5" && ver.t === "AndromedaVideoCut · Beta 0.0.5", JSON.stringify(ver));
-  check("portada muestra Beta 0.0.5", /beta 0\.0\.5/i.test(await w.textContent("[data-version-label]")));
+  const PV = require("../package.json").version;
+  check(`versión ${PV} y título 'Beta ${PV}'`, ver.v === PV && ver.t === `AndromedaVideoCut · Beta ${PV}`, JSON.stringify(ver));
+  check(`portada muestra Beta ${PV}`, (await w.textContent("[data-version-label]")).toLowerCase().includes(`beta ${PV}`));
   await app.evaluate(({ shell }) => { global.__ig = []; shell.openExternal = async (u) => { global.__ig.push(u); }; });
   check("Instagram: texto visible '@andromedavideocut'", (await w.textContent("[data-instagram]")).trim() === "@andromedavideocut");
   await w.click("[data-instagram]"); await sleep(300);
