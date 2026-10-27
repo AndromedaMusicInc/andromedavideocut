@@ -25,7 +25,7 @@ with sync_playwright() as p:
   pg.screenshot(path=f"{OUT}/01-inicio.png")
   ig=pg.locator("[data-instagram]"); ok("Instagram: texto visible '@andromedavideocut' con icono",ig.is_visible() and ig.inner_text().strip()=="@andromedavideocut" and ig.locator("svg").count()==1)
   ok("Instagram: href, target=_blank y rel=noopener",ig.get_attribute("href")=="https://www.instagram.com/andromedavideocut/" and ig.get_attribute("target")=="_blank" and "noopener" in ig.get_attribute("rel"))
-  pg.evaluate("(()=>{window.__opened=[];window.__realOpen=window.open;window.open=(u,t,f)=>{window.__opened.push([u,t,f]);return null}})()"); ig.click(); pg.evaluate("window.open=window.__realOpen")
+  pg.evaluate("(()=>{window.__opened=[];window.__realOpen=window.open;window.open=(u,t,f)=>{window.__opened.push([u,t,f]);return null}})()"); ig.click(); pg.evaluate("()=>{window.open=window.__realOpen}")  # como función: una expresión que da una función, Playwright la llama (abría window.open(null))
   op=pg.evaluate("window.__opened"); ok("Instagram: clic llama window.open con la URL exacta",op==[["https://www.instagram.com/andromedavideocut/","_blank","noopener,noreferrer"]],op)
   pg.screenshot(path=f"{OUT}/inicio-instagram.png")
   pg.click("[data-new-project]"); ok("inicio: Nuevo proyecto abre el diálogo",pg.locator("[data-new-dialog]").count()==1); pg.keyboard.press("Escape"); pg.click("[aria-label=Cerrar]")
