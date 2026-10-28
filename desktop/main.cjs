@@ -181,10 +181,30 @@ async function openViewerOn(displayId, fullscreen) {
 }
 
 function buildMenu() {
+  const isMac = process.platform === "darwin";
   const template = [
+    // Mac: menú de la app (Acerca de, Ocultar, Salir con ⌘Q) y Edición para que ⌘C/⌘V funcionen en campos de texto.
+    ...(isMac
+      ? [
+          {
+            label: "AndromedaVideoCut",
+            submenu: [
+              { role: "about", label: "Acerca de AndromedaVideoCut" },
+              { label: "Buscar actualizaciones…", click: () => updates?.check(true) },
+              { type: "separator" },
+              { role: "hide", label: "Ocultar AndromedaVideoCut" },
+              { role: "hideOthers", label: "Ocultar otros" },
+              { role: "unhide", label: "Mostrar todo" },
+              { type: "separator" },
+              { role: "quit", label: "Salir de AndromedaVideoCut" },
+            ],
+          },
+          { label: "Edición", submenu: [{ role: "undo", label: "Deshacer" }, { role: "redo", label: "Rehacer" }, { type: "separator" }, { role: "cut", label: "Cortar" }, { role: "copy", label: "Copiar" }, { role: "paste", label: "Pegar" }, { role: "selectAll", label: "Seleccionar todo" }] },
+        ]
+      : []),
     {
       label: "Archivo",
-      submenu: [{ role: "reload", label: "Recargar" }, { type: "separator" }, { role: "quit", label: "Salir" }],
+      submenu: isMac ? [{ role: "reload", label: "Recargar" }, { type: "separator" }, { role: "close", label: "Cerrar ventana" }] : [{ role: "reload", label: "Recargar" }, { type: "separator" }, { role: "quit", label: "Salir" }],
     },
     {
       label: "Ver",
@@ -321,6 +341,12 @@ app.whenReady().then(() => {
   screen.on("display-added", () => buildMenu());
   screen.on("display-removed", () => buildMenu());
   ipcMain.handle("settings:opening", (_e, on) => splash.setOpening(app.getPath("userData"), Boolean(on)).openingClip);
+  if (process.platform === "darwin") app.setAboutPanelOptions({ applicationName: "AndromedaVideoCut", applicationVersion: versionLabel(), copyright: "© 2026 Andromeda Music Inc" });
+  if (process.env.AVC_SMOKE) {
+    // Prueba de humo (CI): la app arranca, carga el editor y se cierra sola.
+    setTimeout(() => { console.log("AVC_SMOKE timeout"); app.exit(2); }, 60000);
+    app.on("browser-window-created", (_e, w) => w.webContents.once("did-finish-load", () => { console.log("AVC_SMOKE OK", app.getVersion(), process.platform, process.arch, "ffmpeg:", media.hasFfmpeg ? media.hasFfmpeg() : "?"); setTimeout(() => app.exit(0), 1500); }));
+  }
   createWindow(); // primero la principal: es la "primera ventana" para las pruebas y el resto del código
   if (splash.shouldShowSplash({ settings: splash.readSettings(app.getPath("userData")), reducedMotion: splash.prefersReducedMotion(systemPreferences) })) {
     // Tras empezar a cargar la principal: así la principal es siempre la "primera ventana".
