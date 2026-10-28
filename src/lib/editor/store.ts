@@ -22,7 +22,7 @@ import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
 import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
-import { insertLane, MAX_LAYERS, pruneTracks, resolveLane, visibleLayers } from "@/lib/editor/tracks";
+import { insertLane, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
 import {
   DEMO_CLIPS,
   EFFECTS,
@@ -865,11 +865,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     set({ selectedId: target.id });
   },
   loadSaved: (saved) => {
+    const clips = (saved.clips ?? []).filter((c) => c && c.id && c.type).map((c) => makeClip({ ...c, name: c.name ?? "Clip", start: Number(c.start) || 0, duration: Number(c.duration) || 1 }));
     set({
       name: saved.name || "Sin título",
       aspect: saved.aspect || "9:16",
       // Completa campos que falten (proyectos viejos o editados a mano) para que nada se rompa.
-      clips: (saved.clips ?? []).filter((c) => c && c.id && c.type).map((c) => makeClip({ ...c, name: c.name ?? "Clip", start: Number(c.start) || 0, duration: Number(c.duration) || 1 })),
+      clips,
+      trackOrder: restoreTrackOrder(saved.trackOrder, clips),
       muted: saved.muted ?? {},
       hidden: (setHiddenTracks(saved.hidden ?? {}), saved.hidden ?? {}),
       assets: (saved.assets ?? []).map((asset) => ({ ...asset })),

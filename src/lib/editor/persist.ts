@@ -11,6 +11,8 @@ export interface SavedProject {
   clips: Clip[];
   muted: Record<string, boolean>;
   hidden?: Record<string, boolean>;
+  /** 0.0.7: orden de canales (incluye los creados al arrastrar). */
+  trackOrder?: string[];
   assets: Omit<Asset, "url">[];
   beats?: number[];
   bpm?: number;

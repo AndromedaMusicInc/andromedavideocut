@@ -160,6 +160,7 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         clips: state.clips,
         muted: state.muted,
         hidden: state.hidden,
+        trackOrder: state.trackOrder,
         beats: state.beats,
         bpm: state.bpm,
         downbeat: state.downbeat,
