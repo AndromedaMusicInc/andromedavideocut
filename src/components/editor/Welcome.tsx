@@ -1,11 +1,12 @@
 import { loadFeed, openLink, type Feed, type FeedItem, type FeedOrigin } from "@/lib/andromeda/feed";
 import { createProject, deleteProject, duplicateProject, formatBytes, formatDate, formatDuration, listProjects, listProjectsFull, renameProject, restoreProject, trashProject, writeProject, type ProjectMeta } from "@/lib/editor/projects";
 import type { ToolId } from "@/lib/editor/types";
+import { useFeedback } from "@/components/editor/SuggestionBox";
 import { ConnectGrokWizard, SettingsDialog, useAiBoot } from "@/components/editor/ConnectGrok";
 import { useAi } from "@/lib/ai/xai";
 import { ASPECTS, type AspectId } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
-import { Activity, ArchiveRestore, Copy, Download, ExternalLink, Film, FolderOpen, House, LayoutGrid, LayoutTemplate, List, ListMusic, Lock, Mic2, Music2, Newspaper, Pencil, Play, Plus, RefreshCw, Search, Settings, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { Activity, ArchiveRestore, Copy, Download, ExternalLink, Film, FolderOpen, House, LayoutGrid, LayoutTemplate, List, ListMusic, Lock, Mic2, Music2, Newspaper, Pencil, Play, Plus, RefreshCw, Search, Settings, Sparkles, MessageSquarePlus, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, VERSION_LABEL } from "@/lib/version";
 
@@ -308,6 +309,7 @@ export function Welcome({ onOpen }: { onOpen: OpenFn }) {
           <NavItem id="biblioteca" cur={section} set={setSection} icon={<FolderOpen className="size-4" />} label="Biblioteca" />
         </nav>
         <div className="mt-auto flex flex-col gap-0.5 border-t border-[#23232F] pt-2">
+          <button type="button" data-open-feedback="" onClick={() => useFeedback.getState().show()} className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-[#C9C9D4] hover:bg-[#15151F]"><MessageSquarePlus className="size-4 text-[#D4AF37]" /> Sugerencias</button>
           <button type="button" data-open-settings="" onClick={() => ai.openSettings()} className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-[#C9C9D4] hover:bg-[#15151F]"><Settings className="size-4" /> Ajustes</button>
           <button
             type="button"

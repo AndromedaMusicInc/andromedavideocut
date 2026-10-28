@@ -60,6 +60,8 @@ export function pruneTracks(order: string[], clips: { trackId: string }[]) {
 }
 
 export const LANE_EDGE = 12;
+/** Al arrastrar a la línea de tiempo: px junto a la raya entre canales que cuentan como "insertar canal nuevo". */
+export const LANE_INSERT_EDGE = 6;
 
 export type LaneBand = { id: string; top: number; bottom: number };
 

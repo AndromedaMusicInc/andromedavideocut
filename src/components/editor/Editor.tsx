@@ -1,3 +1,7 @@
+import { VersionsSheet } from "@/components/editor/VersionsSheet";
+import { closeSession, dueCheckpoint, openSession, saveVersion, type VersionReason } from "@/lib/editor/versions";
+import { stripUrls } from "@/lib/editor/projects";
+import { HelpMenu } from "@/components/editor/SuggestionBox";
 import { reloadAssetAudio } from "@/lib/editor/audio-import";
 import { ClipMenu } from "@/components/editor/ClipMenu";
 import { Inspector } from "@/components/editor/Inspector";
@@ -106,8 +110,11 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
   const metaRef = useRef(project);
   const saveNow = useRef<() => Promise<void>>(async () => {});
   const flushRef = useRef<() => void>(() => {});
+  const checkpointRef = useRef<(r: VersionReason) => Promise<boolean>>(async () => false);
   useEffect(() => {
     let alive = true;
+    let lastCk = Date.now();
+    const crashed = openSession(project.id);
     let timer = 0;
     let pending = false;
     let lastThumb = 0;
@@ -121,6 +128,8 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
       if (!alive) return;
       if (saved) useEditor.getState().loadSaved(saved);
       else useEditor.getState().loadSaved({ v: 1, name: project.name, aspect: project.aspect, clips: [], muted: {}, assets: [] });
+      if (crashed) useEditor.getState().tell("La app se cerró de golpe la última vez. Se recuperó el último autoguardado; versiones anteriores en Ayuda → Historial de versiones.");
+      (window as unknown as { __avcCrashRecovered?: boolean }).__avcCrashRecovered = crashed;
       useEditor.setState({ hydrated: true, selectedId: null, ...(startTool ? { tool: startTool } : {}) });
       if (saved?.assets.length) {
         const assets: Asset[] = [];
@@ -158,6 +167,9 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         fxCount: state.fxCount,
         assets: state.assets,
       });
+      checkpointRef.current = (reason) => saveVersion(project.id, stripUrls(payload(useEditor.getState())), reason).then((ok) => { if (ok) lastCk = Date.now(); return ok; });
+      // Punto de control al abrir (si hay algo que proteger).
+      if (saved?.clips.length) void checkpointRef.current("abrir");
       // 0.0.2 (beta): si no se pudo guardar (disco/almacenamiento lleno) se avisa, no se calla.
       let failed = false;
       const reportSave = (ok: boolean | undefined) => {
@@ -197,7 +209,9 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         }
         bytes += JSON.stringify(state.clips).length;
         metaRef.current = { ...metaRef.current, name: state.name, aspect: state.aspect, thumb, updatedAt: now, bytes, duration: contentEnd(state.clips) };
-        reportSave(await writeProject(metaRef.current, payload(state)));
+        const ok = await writeProject(metaRef.current, payload(state));
+        reportSave(ok);
+        if (ok && dueCheckpoint(lastCk, now)) void checkpointRef.current("auto");
       };
       saveNow.current = async () => {
         window.clearTimeout(timer);
@@ -214,13 +228,15 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
       // Primera miniatura cuando el visor ya dibujó.
       window.setTimeout(() => alive && void save(), 1200);
     })();
-    const onHide = () => flushRef.current();
+    const onHide = () => { flushRef.current(); closeSession(project.id); };
     window.addEventListener("pagehide", onHide);
     window.addEventListener("beforeunload", onHide);
     return () => {
       // Cambiar de proyecto: guarda lo pendiente antes de soltar el editor.
       flushRef.current();
       flushRef.current = () => {};
+      checkpointRef.current = async () => false;
+      closeSession(project.id);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("beforeunload", onHide);
       alive = false;
@@ -279,13 +295,29 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
         redo();
         return;
       }
+      // F1-10 · recortes al cabezal y por cuadro.
+      if (!event.metaKey && !event.ctrlKey) {
+        const k = event.key;
+        const op = k === "[" ? "start" : k === "]" ? "end" : k.toLowerCase() === "q" && !event.altKey ? "rippleStart" : k.toLowerCase() === "w" && !event.altKey ? "rippleEnd"
+          : event.altKey && (k === "," || k === "<") ? "nudge-" : event.altKey && (k === "." || k === ">") ? "nudge+" : null;
+        if (op) {
+          event.preventDefault();
+          if (!useEditor.getState().trimKey(op, playback.time)) useEditor.getState().tell("Pon el cabezal dentro de un clip para recortar.");
+          return;
+        }
+        if (!event.altKey && (k === "," || k === ".")) {
+          event.preventDefault();
+          seek(Math.max(0, playback.time + (k === "," ? -1 : 1) / 30));
+          return;
+        }
+      }
       if (event.key === " " || event.code === "Space") {
         event.preventDefault();
         togglePlay();
       } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         // 0.0.2 (beta): Ctrl/Cmd+S guarda (antes cortaba el clip).
         event.preventDefault();
-        void saveNow.current().then(() => useEditor.getState().tell("Proyecto guardado."));
+        void saveNow.current().then(() => checkpointRef.current("manual")).then(() => useEditor.getState().tell("Proyecto guardado (versión creada)."));
       } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "s") {
         splitAt(playback.time);
       } else if (event.key === "Delete" || event.key === "Backspace") {
@@ -449,6 +481,8 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
             </option>
           ))}
         </select>
+        <HelpMenu />
+        <VersionsSheet projectId={project.id} checkpoint={(r) => checkpointRef.current(r)} />
         <button
           type="button"
           data-open-settings=""

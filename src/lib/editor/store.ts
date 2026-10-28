@@ -1,3 +1,4 @@
+import { nudgeEnd, trimAt, trimTarget, type TrimOp } from "@/lib/editor/trim";
 import { mixer } from "@/lib/editor/audio";
 import { detectBeats, everyNth } from "@/lib/editor/beats";
 import { idbDelete, idbPut, type SavedProject } from "@/lib/editor/persist";
@@ -20,7 +21,7 @@ import {
 import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
-import { contentEnd, findSlot, joinClips, sourceLength } from "@/lib/editor/time";
+import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
 import { insertLane, MAX_LAYERS, pruneTracks, resolveLane, visibleLayers } from "@/lib/editor/tracks";
 import {
   DEMO_CLIPS,
@@ -116,6 +117,7 @@ export interface EditorState {
   cutSelected: () => void;
   hasClipboard: () => boolean;
   toggleDisabled: () => void;
+  trimKey: (op: TrimOp | "nudge+" | "nudge-", t: number) => boolean;
   splitSelection: () => void;
   separateAudio: () => boolean;
   replaceAsset: (clipId: string, asset: Asset) => void;
@@ -498,6 +500,21 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     set({ clips, selectedId: added[0] ?? null, selectedIds: added.length > 1 ? added : [], past: [...get().past, before].slice(-60), future: [] });
     restartAudio(clips, get().muted);
+  },
+  trimKey: (op, t) => {
+    const st = get();
+    const target = op === "nudge+" || op === "nudge-"
+      ? st.clips.find((c) => c.id === st.selectedId) ?? null
+      : trimTarget(st.clips, st.selectedId, t, st.trackOrder);
+    if (!target) return false;
+    const clips = op === "nudge+" || op === "nudge-"
+      ? nudgeEnd(st.clips, st.assets, target.id, op === "nudge+" ? 1 : -1)
+      : trimAt(st.clips, st.assets, target.id, op, t);
+    if (!clips) return false;
+    const before = snap(st);
+    set({ clips, selectedId: target.id, past: [...st.past, before].slice(-60), future: [] });
+    restartAudio(clips, get().muted);
+    return true;
   },
   toggleDisabled: () => {
     const ids = new Set(get().selection());
@@ -1183,38 +1200,7 @@ function dropTransition(id: TransitionId, time: number) {
   api.tell(`${name} en el corte de ${best.start.toFixed(1)} s.`);
 }
 
-/**
- * Elige el corte donde cae una transición soltada en `time`.
- * 1) El corte más cercano dentro de ~24 px (mín. 0.55 s).
- * 2) Si cayó encima de un clip: su corte de entrada, o si no tiene, el de salida.
- * Antes, fuera de 0.55 s se aplicaba al clip seleccionado/bajo el cabezal (a veces el primero,
- * sin clip antes), y parecía que la transición "no hacía nada".
- */
-export function pickJoin(clips: Clip[], time: number, pps: number): Clip | null {
-  const joins = joinClips(clips);
-  if (!joins.length) return null;
-  const reach = Math.max(0.55, 24 / Math.max(pps, 1));
-  let best: Clip | null = null;
-  let bestDist = reach;
-  for (const clip of joins) {
-    const dist = Math.abs(clip.start - time);
-    if (dist < bestDist) {
-      best = clip;
-      bestDist = dist;
-    }
-  }
-  if (best) return best;
-  const visualAt = clips.filter(
-    (c) => (c.type === "video" || c.type === "image" || c.type === "generator") && !c.disabled && !isTrackHidden(c.trackId) && time >= c.start && time < c.start + c.duration,
-  );
-  for (const hit of visualAt) {
-    const own = joins.find((j) => j.id === hit.id);
-    if (own) return own;
-    const next = joins.find((j) => j.trackId === hit.trackId && Math.abs(j.start - (hit.start + hit.duration)) <= 0.25);
-    if (next) return next;
-  }
-  return null;
-}
+export { pickJoin };
 
 export function limitDuration(clip: Clip, duration: number, assets: Asset[]) {
   const max = Math.max(0.2, (sourceLength(clip, assets) - clip.inPoint) / (clip.speed || 1));

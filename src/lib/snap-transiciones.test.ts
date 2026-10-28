@@ -42,3 +42,23 @@ describe("cortes para transiciones (joinClips)", () => {
     assert.equal(joinClips([c("a", "v1", 0, 3), c("b", "v1", 3.5, 3)]).length, 0);
   });
 });
+
+import { pickJoin } from "./editor/time.ts";
+import { setHiddenTracks } from "./editor/types.ts";
+describe("guía de transición = misma regla que soltar (pickJoin)", () => {
+  const v = (id: string, trackId: string, start: number, duration: number, extra = {}) => ({ id, trackId, start, duration, type: "video", transition: "none", transitionDur: 0.5, ...extra }) as never;
+  it("corte real de la misma pista", () => {
+    assert.equal((pickJoin([v("a", "v1", 0, 3), v("b", "v1", 3, 3)], 3.1, 68) as { id: string } | null)?.id, "b");
+  });
+  it("clips en pistas distintas no hacen corte", () => {
+    assert.equal(pickJoin([v("a", "v1", 0, 3), v("b", "v2", 3, 3)], 3.0, 68), null);
+  });
+  it("ignora clips desactivados", () => {
+    assert.equal(pickJoin([v("a", "v1", 0, 3, { disabled: true }), v("b", "v1", 3, 3)], 3.0, 68), null);
+  });
+  it("ignora pistas ocultas (ojito)", () => {
+    setHiddenTracks({ v1: true });
+    assert.equal(pickJoin([v("a", "v1", 0, 3), v("b", "v1", 3, 3)], 3.0, 68), null);
+    setHiddenTracks({});
+  });
+});

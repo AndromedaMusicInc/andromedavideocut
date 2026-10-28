@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 contextBridge.exposeInMainWorld("avcDesktop", {
   version: process.env.AVC_APP_VERSION || "",
   openExternal: (url) => ipcRenderer.invoke("open-external", String(url)),
+  versions: {
+    list: (id) => ipcRenderer.invoke("versions:list", id),
+    save: (id, meta, data) => ipcRenderer.invoke("versions:save", id, meta, data),
+    read: (id, ts) => ipcRenderer.invoke("versions:read", id, ts),
+    remove: (id, ts) => ipcRenderer.invoke("versions:remove", id, ts),
+  },
   projects: {
     list: () => ipcRenderer.invoke("projects:list"),
     read: (id) => ipcRenderer.invoke("projects:read", id),
@@ -38,6 +44,11 @@ contextBridge.exposeInMainWorld("avcDesktop", {
     },
   },
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
+  onMenu: (name, fn) => {
+    const h = (_e, n) => { if (n === name) fn(); };
+    ipcRenderer.on("menu", h);
+    return () => ipcRenderer.removeListener("menu", h);
+  },
   settings: { setOpening: (on) => ipcRenderer.invoke("settings:opening", Boolean(on)) },
   showItemInFolder: (p) => ipcRenderer.invoke("file:show", String(p)),
   feedCache: (op, text) => ipcRenderer.invoke("feed:cache", op, text),

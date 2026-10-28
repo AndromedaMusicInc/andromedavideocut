@@ -69,3 +69,6 @@
 #avc-open .avc-skip{position:absolute;bottom:24px;font-size:12px;color:#8A8A9A}
 @keyframes avc-in{to{opacity:1}}
 @keyframes avc-out{to{opacity:0;visibility:hidden}}
+
+/* Miniaturas de la biblioteca: nunca arrastre nativo de imagen (rompía soltar videos/audios en la línea de tiempo). */
+[data-lib-item] img{-webkit-user-drag:none;user-select:none}
