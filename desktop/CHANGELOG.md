@@ -9,6 +9,20 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.6] — 2026-10-27 · Beta
+Beta de arreglos y seguridad del trabajo. La app muestra "Beta 0.0.6".
+### Arreglado
+- **Mismo canal:** ya se pueden agregar o copiar más videos o efectos en un canal que ya tiene contenido (arrastrar
+  desde la miniatura ya no cancela el arrastre y la zona para crear canal nuevo es más fina).
+- **Logo de la biblioteca** visible también en la vista previa web.
+- **Guía de transiciones**: marca el corte donde de verdad se aplicará la transición.
+### Agregado
+- **Buzón de sugerencias**: envía ideas o problemas por correo o como reporte en GitHub.
+- **Guardado a prueba de fallas**: historial de versiones (puntos de control), recuperación tras un cierre inesperado
+  y copia de respaldo (.bak) en PC.
+- **Atajos**: `?` muestra la hoja de atajos; `[` `]` `Q` `W` para recortar, y avance/recorte cuadro por cuadro.
+- **Aviso del instalador** si detecta una versión 1.0.x instalada (debe desinstalarse para recibir las betas).
+
 ## [0.0.5] — 2026-10-24 · Beta
 Beta con pantalla de inicio, ojito por pista y guía al arrastrar. La app muestra "Beta 0.0.5".
 ### Agregado
