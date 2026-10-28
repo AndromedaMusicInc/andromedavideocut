@@ -59,6 +59,23 @@ export function pruneTracks(order: string[], clips: { trackId: string }[]) {
   return order.filter((id) => BASE_TRACKS.has(id) || used.has(id) || /^v\d+$/.test(id));
 }
 
+export const DEFAULT_TRACK_ORDER = ["t1", "o1", "fx1", "v1", "a1"];
+
+/**
+ * 0.0.7: orden de canales al abrir un proyecto guardado. Antes no se guardaba: los clips en canales creados al
+ * arrastrar (lane1, lane2…) o en v2… quedaban fuera del orden, no se dibujaban ni sonaban (visor negro) y además se
+ * heredaba el orden del proyecto anterior. Usa el orden guardado si existe y agrega cualquier canal con clips que falte
+ * (encima del video principal, como al crearlo).
+ */
+export function restoreTrackOrder(saved: string[] | undefined, clips: { trackId: string }[]) {
+  const base = Array.isArray(saved) && saved.length ? saved.filter((id) => typeof id === "string" && id) : DEFAULT_TRACK_ORDER;
+  const order = [...new Set(base)];
+  for (const id of DEFAULT_TRACK_ORDER) if (!order.includes(id)) order.push(id);
+  const missing = [...new Set(clips.map((c) => c.trackId))].filter((id) => id && !order.includes(id));
+  if (missing.length) order.splice(Math.max(0, order.indexOf("v1")), 0, ...missing);
+  return pruneTracks(order, clips);
+}
+
 export const LANE_EDGE = 12;
 /** Al arrastrar a la línea de tiempo: px junto a la raya entre canales que cuentan como "insertar canal nuevo". */
 export const LANE_INSERT_EDGE = 6;
