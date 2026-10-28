@@ -25,8 +25,7 @@ try:
     ok("buzón: Enviar abre mailto a info@", bool(u) and u.startswith("mailto:info@andromedamusicinc.com?"), (u or "")[:70])
     ok("buzón: asunto '[AndromedaVideoCut 0.0.6] Bug'", q.get("subject", [""])[0] == "[AndromedaVideoCut 0.0.6] Bug", q.get("subject"))
     body = q.get("body", [""])[0]; ok("buzón: cuerpo prellenado", "El imán no pega & falla?" in body and "Contacto: yo@correo.com" in body and "Versión: 0.0.6" in body)
-    pg.click("[data-fb-github]"); g = pg.evaluate("window.__opened[1]")
-    ok("buzón: 'Abrir en GitHub' = issue nuevo prellenado", g.startswith("https://github.com/AndromedaMusicInc/andromedavideocut/issues/new?") and "yo%40correo.com" not in g, g[:90])
+    ok("buzón: sin opción de GitHub", pg.locator("[data-fb-github]").count() == 0 and "GitHub" not in pg.inner_text("[data-feedback]"))
     pg.keyboard.press("Escape"); pg.wait_for_timeout(200); ok("buzón: Esc cierra", pg.locator("[data-feedback]").count() == 0)
     # Ayuda en el editor
     pg.click("[data-open-project]"); pg.wait_for_selector("[data-timeline]"); pg.wait_for_timeout(600)

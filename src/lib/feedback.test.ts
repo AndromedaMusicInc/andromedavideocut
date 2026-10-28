@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { describePlatform, feedbackBody, feedbackSubject, githubIssueUrl, mailtoUrl, validEmail } from "./feedback.ts";
+import { describePlatform, feedbackBody, feedbackSubject, mailtoUrl, validEmail } from "./feedback.ts";
 
 const f = { kind: "sugerencia" as const, text: "Quiero más transiciones & efectos?", email: "yo@x.com", version: "0.0.6", platform: "PC (Windows)" };
 describe("buzón de sugerencias", () => {
@@ -20,13 +20,10 @@ describe("buzón de sugerencias", () => {
     assert.equal(q.get("subject"), "[AndromedaVideoCut 0.0.6] Sugerencia");
     assert.ok(q.get("body")!.includes("& efectos?"));
   });
-  it("issue de GitHub prellenado, sin el correo (privacidad), con etiqueta", () => {
-    const u = new URL(githubIssueUrl(f));
-    assert.equal(u.origin + u.pathname, "https://github.com/AndromedaMusicInc/andromedavideocut/issues/new");
-    assert.equal(u.searchParams.get("title"), "[AndromedaVideoCut 0.0.6] Sugerencia");
-    assert.ok(!u.searchParams.get("body")!.includes("yo@x.com"));
-    assert.equal(u.searchParams.get("labels"), "enhancement");
-    assert.equal(new URL(githubIssueUrl({ ...f, kind: "bug" })).searchParams.get("labels"), "bug");
+  it("solo correo: no hay enlace a GitHub", async () => {
+    const m = await import("./feedback.ts");
+    assert.equal("githubIssueUrl" in m, false);
+    assert.ok(!mailtoUrl(f).includes("github"));
   });
   it("correo opcional pero válido", () => {
     assert.ok(validEmail("")); assert.ok(validEmail("a@b.co")); assert.ok(!validEmail("nope"));
