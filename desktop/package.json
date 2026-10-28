@@ -68,7 +68,17 @@
           "to": "ffmpeg/LEEME-FFmpeg.txt"
         }
       ],
-      "artifactName": "AndromedaVideoCut-Setup-${version}-x64.${ext}"
+      "artifactName": "AndromedaVideoCut-Setup-${version}-x64.${ext}",
+      "extraFiles": [
+        {
+          "from": "build/README.txt",
+          "to": "README.txt"
+        },
+        {
+          "from": "build/LICENSE.txt",
+          "to": "LICENSE.txt"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -98,16 +108,6 @@
       "include": "build/installer.nsh"
     },
     "copyright": "© 2026 Andromeda Music Inc",
-    "extraFiles": [
-      {
-        "from": "build/README.txt",
-        "to": "README.txt"
-      },
-      {
-        "from": "build/LICENSE.txt",
-        "to": "LICENSE.txt"
-      }
-    ],
     "publish": [
       {
         "provider": "github",
@@ -162,6 +162,14 @@
         {
           "from": "build/FFMPEG-NOTICE.txt",
           "to": "ffmpeg/LEEME-FFmpeg.txt"
+        },
+        {
+          "from": "build/README.txt",
+          "to": "README.txt"
+        },
+        {
+          "from": "build/LICENSE.txt",
+          "to": "LICENSE.txt"
         }
       ]
     },
