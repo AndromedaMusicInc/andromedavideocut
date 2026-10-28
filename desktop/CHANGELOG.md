@@ -9,6 +9,14 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.7] — 2026-10-28 · Beta
+Beta de arreglo. La app muestra "Beta 0.0.7".
+### Arreglado
+- **Proyectos guardados que abrían en negro:** los canales creados al soltar un clip entre dos canales no se guardaban,
+  así que al reabrir el proyecto sus clips no se veían ni sonaban. Ahora el proyecto guarda el orden de sus canales y,
+  al abrirlo, los rearma. Los proyectos ya guardados se arreglan solos al abrirlos; si tenían varios canales nuevos,
+  el orden entre ellos (cuál queda encima) podría variar.
+
 ## [0.0.6] — 2026-10-27 · Beta
 Beta de arreglos y seguridad del trabajo. La app muestra "Beta 0.0.6".
 ### Arreglado
