@@ -3,6 +3,14 @@
 const { app, dialog, BrowserWindow } = require("electron");
 
 const CHECK_EVERY_MS = 4 * 60 * 60 * 1000; // cada 4 horas
+const RELEASES = "https://github.com/AndromedaMusicInc/andromedavideocut/releases";
+
+// Mac sin firma de Apple: electron-updater no puede instalar solo (Squirrel.Mac exige firma).
+// En Mac se avisa y se abre la descarga del .dmg de nombre fijo de la última release.
+function macDownloadUrl(arch) {
+  return `${RELEASES}/latest/download/AndromedaVideoCut-Mac-${arch === "arm64" ? "arm64" : "x64"}.dmg`;
+}
+const canSelfInstall = (platform) => platform !== "darwin";
 
 function mainWindow() {
   return BrowserWindow.getAllWindows()[0] ?? null;
@@ -19,6 +27,8 @@ function setupUpdater(updater, hooks = {}) {
     const r = win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts);
     return r.response;
   });
+  const platform = hooks.platform ?? process.platform;
+  const openUrl = hooks.openUrl ?? ((u) => require("electron").shell.openExternal(u));
   updater.autoDownload = false;
   // Betas 0.0.x: se publican como release NORMAL (no pre-release) para que 0.0.2 → 0.0.3 se actualice solo.
   // Si algún día se marcan como pre-release, hay que poner allowPrerelease = true.
@@ -48,6 +58,20 @@ function setupUpdater(updater, hooks = {}) {
   updater.on("update-available", async (info) => {
     log("disponible", info.version);
     manual = false;
+    if (!canSelfInstall(platform)) {
+      busy = false;
+      const c = await ask({
+        type: "question",
+        title: "Actualización disponible",
+        message: `Hay una nueva versión ${info.version}.`,
+        detail: `Tienes la ${app.getVersion()}. En Mac se instala a mano: descarga el .dmg y arrastra AndromedaVideoCut a Aplicaciones (reemplaza la anterior).`,
+        buttons: ["Descargar", "Más tarde"],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (c === 0) await openUrl(macDownloadUrl(hooks.arch ?? process.arch));
+      return;
+    }
     const choice = await ask({
       type: "question",
       title: "Actualización disponible",
@@ -115,4 +139,4 @@ function setupUpdater(updater, hooks = {}) {
   return { check, startSchedule: () => setInterval(() => check(false), CHECK_EVERY_MS) };
 }
 
-module.exports = { setupUpdater, CHECK_EVERY_MS };
+module.exports = { setupUpdater, CHECK_EVERY_MS, macDownloadUrl, canSelfInstall };

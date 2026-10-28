@@ -1,11 +1,16 @@
 // F1-10 · Hoja de atajos ("?", Ayuda → Atajos, menú de PC).
 import { useEffect, useState } from "react";
 
-export const SHORTCUTS: [string, string][][] = [
+const BASE: [string, string][][] = [
   [["Espacio", "Reproducir / pausar"], ["← →", "Mover cabezal 0,1 s (Shift: 1 s)"], [", .", "Cuadro anterior / siguiente"], ["Ctrl+S", "Guardar"], ["Ctrl+Z / Ctrl+Y", "Deshacer / rehacer"]],
   [["Ctrl+B · S", "Dividir en el cabezal"], ["[", "Recortar inicio al cabezal"], ["]", "Recortar final al cabezal"], ["Q", "Recortar inicio y cerrar hueco"], ["W", "Recortar final y cerrar hueco"], ["Alt+, / Alt+.", "Acortar / alargar 1 cuadro"]],
   [["Ctrl+C / Ctrl+V", "Copiar / pegar"], ["Ctrl+D", "Duplicar"], ["Ctrl+X", "Cortar"], ["Supr", "Borrar"], ["V", "Activar / desactivar clip"], ["Ctrl+A", "Seleccionar todo"], ["?", "Esta hoja"]],
 ];
+
+// En Mac se muestran ⌘ y ⌥ (los atajos ya aceptan metaKey).
+const isMac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+export const macLabel = (k: string) => k.replace(/Ctrl\+/g, "⌘").replace(/Alt\+/g, "⌥").replace(/^Supr$/, "⌫");
+export const SHORTCUTS: [string, string][][] = isMac ? BASE.map((g) => g.map(([k, d]) => [macLabel(k), d] as [string, string])) : BASE;
 
 export function ShortcutsSheet() {
   const [open, setOpen] = useState(false);

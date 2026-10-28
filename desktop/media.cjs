@@ -10,7 +10,7 @@ const EXE = process.platform === "win32" ? ".exe" : "";
 function ffDir() {
   if (process.env.AVC_FFMPEG_DIR) return process.env.AVC_FFMPEG_DIR;
   if (app.isPackaged) return path.join(process.resourcesPath, "ffmpeg");
-  return path.join(__dirname, "vendor", "ffmpeg", process.platform === "win32" ? "win" : "linux", "bin");
+  return path.join(__dirname, "vendor", "ffmpeg", process.platform === "win32" ? "win" : process.platform === "darwin" ? `mac-${process.arch}` : "linux", "bin");
 }
 const ffmpegPath = () => path.join(ffDir(), `ffmpeg${EXE}`);
 const ffprobePath = () => path.join(ffDir(), `ffprobe${EXE}`);
