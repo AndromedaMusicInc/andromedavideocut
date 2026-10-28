@@ -9,6 +9,16 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.8] — 2026-10-28 · Beta
+La app muestra "Beta 0.0.8".
+### Cambiado
+- **Panel del clip en pestañas:** Colores, Entrada-Medio-Salida, Ajustes (sub-pestañas Básico y Quitar fondo) y Filtros.
+  Cada grupo de controles va en una sección plegable con botón para restablecer, y los valores numéricos se pueden
+  escribir o ajustar con flechas.
+- **Buzón de sugerencias:** ahora solo envía por correo (se quitó el enlace a GitHub).
+### Añadido
+- **Versión web:** botón "Descargar para PC" en Inicio y en Ayuda, que lleva a la última versión publicada.
+
 ## [0.0.7] — 2026-10-28 · Beta
 Beta de arreglo. La app muestra "Beta 0.0.7".
 ### Arreglado
