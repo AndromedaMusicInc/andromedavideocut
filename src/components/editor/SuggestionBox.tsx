@@ -1,8 +1,8 @@
-// Buzón de sugerencias (Ayuda y botón en Inicio). Enviar = abre el correo; alterno = issue en GitHub.
+// Buzón de sugerencias (Ayuda y botón en Inicio). Enviar = abre el correo a info@.
 import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { X } from "lucide-react";
-import { describePlatform, FEEDBACK_EMAIL, FEEDBACK_KINDS, githubIssueUrl, mailtoUrl, validEmail, type Feedback, type FeedbackKind } from "@/lib/feedback";
+import { describePlatform, FEEDBACK_EMAIL, FEEDBACK_KINDS, mailtoUrl, validEmail, type Feedback, type FeedbackKind } from "@/lib/feedback";
 import { APP_VERSION } from "@/lib/version";
 
 export const useFeedback = create<{ open: boolean; show: () => void; hide: () => void }>((set) => ({
@@ -68,14 +68,16 @@ export function SuggestionBox() {
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" data-fb-send="" disabled={!ok} onClick={() => go(mailtoUrl(fb), "correo")}
             className="h-10 flex-1 rounded-md bg-[#D4AF37] px-3 text-sm font-semibold text-black disabled:opacity-40">Enviar</button>
-          <button type="button" data-fb-github="" disabled={!ok} onClick={() => go(githubIssueUrl(fb), "GitHub")}
-            className="h-10 rounded-md border border-[#23232F] px-3 text-sm disabled:opacity-40">Abrir en GitHub</button>
         </div>
-        {sent ? <p role="status" className="mt-2 text-xs text-[#C9C9D4]">{sent === "correo" ? "Abrimos tu correo con el mensaje listo. ¡Gracias!" : "Abrimos GitHub con el reporte listo (necesitas tu cuenta de GitHub para enviarlo)."}</p> : null}
+        {sent ? <p role="status" className="mt-2 text-xs text-[#C9C9D4]">Abrimos tu correo con el mensaje listo. ¡Gracias!</p> : null}
       </div>
     </div>
   );
 }
+
+export const DOWNLOAD_PC_URL = "https://github.com/AndromedaMusicInc/andromedavideocut/releases/latest";
+/** Solo en la web: en la app de escritorio no tiene sentido. */
+export const isDesktopApp = () => Boolean(desk());
 
 /** Menú "Ayuda" del editor (web y PC): buzón de sugerencias y atajos. */
 export function HelpMenu() {
@@ -87,6 +89,9 @@ export function HelpMenu() {
       {open ? (
         <div role="menu" className="absolute right-0 top-12 z-50 w-56 rounded-md border border-line bg-raised p-1 shadow-lg" onMouseLeave={() => setOpen(false)}>
           <button type="button" role="menuitem" data-help-feedback="" onClick={() => { setOpen(false); useFeedback.getState().show(); }} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-surface">Buzón de sugerencias…</button>
+          {!isDesktopApp() ? (
+            <a role="menuitem" data-download-pc="" href={DOWNLOAD_PC_URL} target="_blank" rel="noopener" onClick={() => setOpen(false)} className="block w-full rounded px-3 py-2 text-left text-sm text-[#D4AF37] hover:bg-surface">Descargar para PC (Windows)</a>
+          ) : null}
           <button type="button" role="menuitem" data-help-shortcuts="" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent("avc:shortcuts")); }} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-surface">Atajos de teclado <span className="float-right text-muted">?</span></button>
           <button type="button" role="menuitem" data-help-versions="" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent("avc:versions")); }} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-surface">Historial de versiones…</button>
         </div>

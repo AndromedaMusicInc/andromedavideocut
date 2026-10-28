@@ -1,6 +1,5 @@
-// Buzón de sugerencias: sin backend, sin cuentas, sin tokens. Arma un mailto: y una URL de issue nuevo prellenado.
+// Buzón de sugerencias: sin backend, sin cuentas, sin tokens. Arma un mailto: a info@.
 export const FEEDBACK_EMAIL = "info@andromedamusicinc.com";
-export const FEEDBACK_REPO = "AndromedaMusicInc/andromedavideocut";
 export type FeedbackKind = "sugerencia" | "bug" | "otro";
 export const FEEDBACK_KINDS: { id: FeedbackKind; label: string }[] = [
   { id: "sugerencia", label: "Sugerencia" },
@@ -10,7 +9,7 @@ export const FEEDBACK_KINDS: { id: FeedbackKind; label: string }[] = [
 export interface Feedback { kind: FeedbackKind; text: string; email?: string; version: string; platform: string }
 
 const KIND_LABEL: Record<FeedbackKind, string> = { sugerencia: "Sugerencia", bug: "Bug", otro: "Otro" };
-const MAX_URL_TEXT = 6000; // mailto/GitHub fallan con URLs muy largas
+const MAX_URL_TEXT = 6000; // mailto falla con URLs muy largas
 
 export function feedbackSubject(f: Pick<Feedback, "kind" | "version">) {
   return `[AndromedaVideoCut ${f.version}] ${KIND_LABEL[f.kind]}`;
@@ -37,15 +36,6 @@ export function validEmail(email: string) {
 
 export function mailtoUrl(f: Feedback) {
   return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(feedbackSubject(f))}&body=${encodeURIComponent(feedbackBody(f))}`;
-}
-
-/** Issue nuevo prellenado. Por privacidad, el correo no se publica en GitHub. */
-export function githubIssueUrl(f: Feedback) {
-  const body = feedbackBody({ ...f, email: "" }).replace("Contacto: (no indicado)", "");
-  const labels = f.kind === "bug" ? "bug" : f.kind === "sugerencia" ? "enhancement" : "";
-  const q = new URLSearchParams({ title: feedbackSubject(f), body: body.trimEnd() });
-  if (labels) q.set("labels", labels);
-  return `https://github.com/${FEEDBACK_REPO}/issues/new?${q.toString()}`;
 }
 
 /** "PC (Windows)" / "Web (Chrome · Linux)" a partir del userAgent. */

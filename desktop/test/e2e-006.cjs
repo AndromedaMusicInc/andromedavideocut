@@ -17,14 +17,14 @@ const only = (process.argv[2] || "feedback,shortcuts,autosave").split(",");
     await w.fill("[data-fb-text]", "Idea desde la PC"); 
     const meta = await w.innerText("[data-fb-meta]"); check("PC: adjunta versión y plataforma PC", meta.includes(VER) && /PC \(/.test(meta), meta);
     await w.click("[data-fb-send]"); await sleep(300);
-    await w.click("[data-fb-github]"); await sleep(300);
     const op = await app.evaluate(() => global.__opened);
     check("PC: Enviar usa shell.openExternal con mailto a info@", op[0]?.startsWith("mailto:info@andromedamusicinc.com?subject=") && decodeURIComponent(op[0]).includes(`[AndromedaVideoCut ${VER}] Sugerencia`), (op[0] || "").slice(0, 80));
-    check("PC: 'Abrir en GitHub' usa shell.openExternal con el issue", op[1]?.startsWith("https://github.com/AndromedaMusicInc/andromedavideocut/issues/new?"), (op[1] || "").slice(0, 80));
+    check("PC: el buzón no tiene botón de GitHub", (await w.locator("[data-fb-github]").count()) === 0);
     const blocked = await w.evaluate(() => window.avcDesktop.openExternal("mailto:otro@x.com?subject=x").then(() => "ok"));
     const op2 = await app.evaluate(() => global.__opened.length);
-    check("PC: no abre mailto a otros correos", op2 === 2, `${blocked} ${op2}`);
+    check("PC: no abre mailto a otros correos", op2 === 1, `${blocked} ${op2}`);
     await w.click("[data-feedback] [aria-label=Cerrar]");
+    check("PC: sin 'Descargar para PC' en Inicio", (await w.locator("[data-download-pc]").count()) === 0);
     await w.click("[data-open-feedback]"); check("PC: botón Sugerencias en Inicio", (await w.locator("[data-feedback]").count()) === 1);
     await w.click("[data-feedback] [aria-label=Cerrar]");
   }

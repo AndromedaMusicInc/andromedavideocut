@@ -3,6 +3,7 @@ import { isVideoTrack } from "@/lib/editor/tracks";
 import { TEXT_COLORS, TEXT_FONTS, TEXT_LOOKS, TEXT_ANIMS, TEXT_SHADOWS, EFFECTS, ENTERS, LEAVES, MIDS, FILTERS, lookFields, lookPreviewStyle, sameLook, textFont, type Clip } from "@/lib/editor/types";
 import { alignMark, centerAt } from "@/lib/editor/align";
 import { cn } from "@/lib/cn";
+import { INSPECTOR_TABS, loadInspectorTab, nextTab, saveInspectorTab, tabHasContent, type InspectorTab } from "@/lib/editor/inspector-tabs";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function Inspector() {
@@ -45,6 +46,7 @@ function ClipInspector({ clip }: { clip: Clip }) {
   const snapshot = useEditor((s) => s.snapshot);
   const pushHistory = useEditor((s) => s.pushHistory);
   const before = useRef<ReturnType<typeof snapshot> | null>(null);
+  const [tab, setTab] = useInspectorTab();
 
   if (clip.type === "fx") return <FxInspector clip={clip} />;
 
@@ -60,6 +62,9 @@ function ClipInspector({ clip }: { clip: Clip }) {
         {clip.type === "text" ? <LookGrid clip={clip} /> : null}
         {clip.type !== "audio" ? <AlignButtons clip={clip} /> : null}
       </div>
+      <InspectorTabs tab={tab} onTab={setTab} />
+      <div role="tabpanel" id={`insp-panel-${tab}`} aria-labelledby={`insp-tab-${tab}`} data-insp-panel={tab} className="flex flex-col gap-4">
+      {tab === "ajustes" ? (<>
       {clip.type !== "audio" ? (
         <Field label="Giro" value={`${Math.round(normTurn(clip.rotation ?? 0))}°`}>
           <Range
@@ -75,7 +80,11 @@ function ClipInspector({ clip }: { clip: Clip }) {
           />
         </Field>
       ) : null}
+      </>) : null}
+      {tab === "ems" ? (<>
       {clip.type !== "audio" && clip.type !== "text" ? <MotionFields clip={clip} /> : null}
+      </>) : null}
+      {tab === "ajustes" ? (<>
       {clip.type === "video" || clip.type === "image" || clip.type === "generator" ? (
         <div className="flex flex-col gap-2">
           <span className="text-xs text-muted">Quitar fondo</span>
@@ -164,6 +173,8 @@ function ClipInspector({ clip }: { clip: Clip }) {
           </select>
         </label>
       ) : null}
+      </>) : null}
+      {tab === "colores" ? (<>
       {clip.type === "text" ? (
         <div className="flex flex-col gap-2">
           <span className="text-xs text-muted">Color</span>
@@ -202,6 +213,8 @@ function ClipInspector({ clip }: { clip: Clip }) {
           <HexField color={toHex(clip.color)} onCommit={(color) => patchClip(clip.id, { color })} />
         </div>
       ) : null}
+      </>) : null}
+      {tab === "ajustes" ? (<>
       {clip.type === "text" ? (
         <Field label="Espaciado" value={(clip.tracking ?? 0).toFixed(2)}>
           <Range
@@ -253,6 +266,8 @@ function ClipInspector({ clip }: { clip: Clip }) {
           ))}
         </div>
       ) : null}
+      </>) : null}
+      {tab === "ems" ? (<>
       {clip.type === "text" ? (
         <div className="flex flex-col gap-2">
           <Pick
@@ -299,6 +314,11 @@ function ClipInspector({ clip }: { clip: Clip }) {
               onEnd={() => before.current && pushHistory(before.current)}
             />
           </Field>
+        </div>
+      ) : null}
+      </>) : null}
+      {tab === "ajustes" ? (<>
+      {clip.type === "text" ? (
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">Sombra</span>
             <div className="grid grid-cols-3 gap-1">
@@ -317,7 +337,6 @@ function ClipInspector({ clip }: { clip: Clip }) {
               ))}
             </div>
           </div>
-        </div>
       ) : null}
       {clip.type === "text" || clip.type === "sticker" ? (
         <>
@@ -491,8 +510,9 @@ function ClipInspector({ clip }: { clip: Clip }) {
           />
         </Field>
       ) : null}
+      </>) : null}
+      {tab === "filtros" ? (<>
       {clip.type === "video" || clip.type === "image" || clip.type === "generator" ? (
-        <>
           <div>
             <p className="mb-1.5 text-xs text-muted">Filtro de este pedazo</p>
             <div className="grid grid-cols-3 gap-1">
@@ -511,6 +531,10 @@ function ClipInspector({ clip }: { clip: Clip }) {
               ))}
             </div>
           </div>
+      ) : null}
+      </>) : null}
+      {tab === "colores" ? (<>
+      {clip.type === "video" || clip.type === "image" || clip.type === "generator" ? (<>
           <Field label="Brillo" value={clip.brightness.toFixed(2)}>
             <Range
               min={0.4}
@@ -621,6 +645,8 @@ function ClipInspector({ clip }: { clip: Clip }) {
           </button>
         </>
       ) : null}
+      </>) : null}
+      {tab === "ems" ? (<>
       <Field label="Fundido entrada" value={`${clip.fadeIn.toFixed(1)}s`}>
         <Range
           min={0}
@@ -662,6 +688,9 @@ function ClipInspector({ clip }: { clip: Clip }) {
           />
         </Field>
       ) : null}
+      </>) : null}
+      <TabHint tab={tab} type={clip.type} />
+      </div>
     </div>
   );
 }
@@ -912,4 +941,46 @@ function Range({
       className="h-8 w-full"
     />
   );
+}
+
+function useInspectorTab() {
+  const [tab, set] = useState<InspectorTab>(() => loadInspectorTab());
+  return [tab, (t: InspectorTab) => { set(t); saveInspectorTab(t); }] as const;
+}
+
+/** Pestañas del inspector: subrayado dorado, teclado con flechas/Inicio/Fin, se acomodan en 2 filas si el panel es angosto. */
+function InspectorTabs({ tab, onTab }: { tab: InspectorTab; onTab: (t: InspectorTab) => void }) {
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  function key(e: React.KeyboardEvent) {
+    const n = nextTab(tab, e.key);
+    if (!n) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onTab(n);
+    refs.current[n]?.focus();
+  }
+  return (
+    <div role="tablist" aria-label="Edición del clip" data-insp-tabs="" onKeyDown={key}
+      className="sticky -top-3 z-10 -mx-3 flex flex-wrap gap-1 border-b border-line bg-surface px-3 py-1.5">
+      {INSPECTOR_TABS.map((t) => {
+        const on = t.id === tab;
+        return (
+          <button key={t.id} ref={(el) => { refs.current[t.id] = el; }} type="button" role="tab" id={`insp-tab-${t.id}`}
+            aria-selected={on} aria-controls={`insp-panel-${t.id}`} tabIndex={on ? 0 : -1} data-insp-tab={t.id}
+            onClick={() => onTab(t.id)}
+            className={cn(
+              "min-h-9 flex-auto basis-[40%] rounded-md border-b-2 px-2 text-xs font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-accent sm:basis-0",
+              on ? "border-accent bg-raised text-fg" : "border-transparent text-muted hover:bg-raised/60 hover:text-fg",
+            )}>
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TabHint({ tab, type }: { tab: InspectorTab; type: Clip["type"] }) {
+  if (tabHasContent(tab, type)) return null;
+  return <p data-insp-empty="" className="text-xs text-pretty text-muted">Este tipo de clip no tiene opciones en esta pestaña.</p>;
 }
