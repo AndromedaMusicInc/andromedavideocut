@@ -9,6 +9,14 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.9] — 2026-10-28 · Beta
+La app muestra "Beta 0.0.9". Windows y Mac salen a la par con el mismo número.
+### Añadido
+- **Primera versión para Mac:** instaladores `.dmg` (y `.zip`) para Mac con chip Apple (M1–M4, arm64) y para Mac Intel (x64).
+  Es beta **sin firma de Apple**: la primera vez, abre la app con **clic derecho > Abrir**.
+- **Actualizaciones en Mac:** la app avisa cuando hay una versión nueva y abre la descarga (no se instala sola).
+- Enlaces de descarga de nombre fijo para el website (Windows y Mac).
+
 ## [0.0.8] — 2026-10-28 · Beta
 La app muestra "Beta 0.0.8".
 ### Cambiado
