@@ -9,6 +9,15 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.10] — 2026-10-29 · Beta
+Beta de arreglos (guardado a prueba de fallas, segunda tanda). La app muestra "Beta 0.0.10". Windows y Mac a la par.
+### Arreglado
+- **Versiones viejas sin archivos:** quitar un medio de la biblioteca ya no borra su archivo, así que deshacer o restaurar
+  una versión del historial lo recupera. Al borrar un proyecto solo se eliminan los archivos que ningún otro proyecto ni
+  ninguna versión de su historial usa.
+- **Guardado interrumpido (PC):** si la app se cortó justo al guardar y quedó un archivo temporal completo y más nuevo,
+  al abrir el proyecto se recupera ese guardado; si estaba a medias, se descarta.
+
 ## [0.0.9] — 2026-10-28 · Beta
 La app muestra "Beta 0.0.9". Windows y Mac salen a la par con el mismo número.
 ### Añadido

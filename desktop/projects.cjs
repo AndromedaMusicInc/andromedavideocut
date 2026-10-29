@@ -17,7 +17,21 @@ function atomic(file, text, keepBak = false) {
   if (keepBak && fs.existsSync(file)) { try { fs.copyFileSync(file, `${file}.bak`); } catch { /* sigue */ } }
   fs.renameSync(tmp, file);
 }
+// F1-01 (tanda 2): si quedó un .tmp huérfano (corte entre escribir y renombrar), válido y más nuevo
+// que el principal, se usa ese y se promueve a principal.
+function mtime(f) { try { return fs.statSync(f).mtimeMs; } catch { return -1; } }
 function readJson(file) {
+  const tmp = `${file}.tmp`;
+  if (fs.existsSync(tmp)) {
+    try {
+      const d = JSON.parse(fs.readFileSync(tmp, "utf8"));
+      if (d && Array.isArray(d.clips) && mtime(tmp) > mtime(file)) {
+        try { if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`); fs.renameSync(tmp, file); } catch { /* sigue */ }
+        return d;
+      }
+    } catch { /* .tmp a medias: se descarta */ }
+    try { fs.rmSync(tmp, { force: true }); } catch { /* nada */ }
+  }
   for (const f of [file, `${file}.bak`]) {
     try {
       const d = JSON.parse(fs.readFileSync(f, "utf8"));
@@ -133,4 +147,4 @@ function registerProjectsIpc() {
   });
 }
 
-module.exports = { registerProjectsIpc };
+module.exports = { registerProjectsIpc, readJson };

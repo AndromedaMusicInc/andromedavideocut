@@ -2,7 +2,7 @@
 // Escritorio: archivos JSON en userData/projects (vía IPC). Web: localStorage.
 // Los archivos multimedia siguen en IndexedDB por id de recurso (en Electron también vive en userData).
 import { idbDelete, idbGet, idbPut, type SavedProject } from "@/lib/editor/persist";
-import { deleteVersions } from "@/lib/editor/versions";
+import { deleteVersions, listVersions, readVersion } from "@/lib/editor/versions";
 import { DEMO_CLIPS, type AspectId, type Clip } from "@/lib/editor/types";
 
 export const LEGACY_KEY = "framecut.project.v1";
@@ -135,6 +135,9 @@ export async function writeProject(meta: ProjectMeta, data: SavedProject | null)
 
 export async function deleteProject(id: string) {
   const data = await readProject(id);
+  // Candidatos a borrar: medios del proyecto y de su historial (incluye los quitados de la biblioteca).
+  const mine = new Set((data?.assets ?? []).map((a) => a.id));
+  for (const v of await listVersions(id)) for (const a of (await readVersion(id, v.ts))?.assets ?? []) mine.add(a.id);
   const d = desktop();
   if (d) await d.remove(id);
   else {
@@ -143,13 +146,15 @@ export async function deleteProject(id: string) {
     lsSetIndex(lsIndex().filter((p) => p.id !== id));
   }
   // Borra los archivos que ningún otro proyecto usa.
-  if (data?.assets.length) {
+  if (mine.size) {
     const used = new Set<string>();
     for (const p of await listProjects()) {
       const other = await readProject(p.id);
       for (const a of other?.assets ?? []) used.add(a.id);
+      // F1-01: también cuentan los medios que usa alguna versión del historial de otro proyecto.
+      for (const v of await listVersions(p.id)) for (const a of (await readVersion(p.id, v.ts))?.assets ?? []) used.add(a.id);
     }
-    for (const a of data.assets) if (!used.has(a.id)) await idbDelete(a.id).catch(() => {});
+    for (const a of mine) if (!used.has(a)) await idbDelete(a).catch(() => {});
   }
 }
 

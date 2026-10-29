@@ -1,7 +1,7 @@
 import { nudgeEnd, trimAt, trimTarget, type TrimOp } from "@/lib/editor/trim";
 import { mixer } from "@/lib/editor/audio";
 import { detectBeats, everyNth } from "@/lib/editor/beats";
-import { idbDelete, idbPut, type SavedProject } from "@/lib/editor/persist";
+import { idbPut, type SavedProject } from "@/lib/editor/persist";
 import { playback } from "@/lib/editor/playback";
 import { pool } from "@/lib/editor/pool";
 import {
@@ -416,7 +416,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     const asset = get().assets.find((item) => item.id === id);
     if (asset?.url) URL.revokeObjectURL(asset.url);
     pool.drop(id);
-    void idbDelete(id).catch(() => undefined);
+    // El archivo NO se borra aquí: deshacer o una versión vieja del historial lo pueden necesitar.
     const clips = get().clips.filter((clip) => clip.assetId !== id);
     set({
       assets: get().assets.filter((item) => item.id !== id),

@@ -13,6 +13,6 @@
 ## Falta (siguientes tandas)
 1. **Medios fuera de IndexedDB en PC**: copiarlos a `userData/media` con escritura atómica. Hoy los blobs viven en el IndexedDB de Electron.
 2. **OPFS en web** para proyectos grandes. Hoy el proyecto va en localStorage, con un límite de unos 5 MB y un aviso si se llena.
-3. **Medios que solo usa una versión**: si se borra un medio que ya no está en el proyecto actual, una versión vieja lo marca como "Falta el archivo". Habría que contar las referencias de las versiones al limpiar.
+3. ✅ (0.0.10) **Medios que solo usa una versión**: si se borra un medio que ya no está en el proyecto actual, una versión vieja lo marca como "Falta el archivo". Habría que contar las referencias de las versiones al limpiar.
 4. **Diálogo de recuperación con opciones** ("abrir autoguardado" / "elegir versión") en lugar de solo un aviso. Además: comparar versiones con miniatura, ponerles nombre manual y añadir "Historial" al menú nativo de PC.
-5. Detectar un archivo `.tmp` huérfano al arrancar y ofrecerlo si es más nuevo y es válido.
+5. ✅ (0.0.10) Detectar un archivo `.tmp` huérfano al arrancar y ofrecerlo si es más nuevo y es válido.
