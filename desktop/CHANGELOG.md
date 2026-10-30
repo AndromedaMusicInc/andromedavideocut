@@ -9,6 +9,14 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.11] — 2026-10-30 · Beta
+
+### Cambiado
+- **Filtros y looks con clic van en barra encima del video.** Al tocar un filtro o look en la biblioteca se crea una barra en la pista de efectos que cubre el clip bajo el cabezal (de 1,2 a 8 s), en vez de pintar el clip entero. Se recorta por los bordes y se mueve como cualquier efecto. "Quitar fondo" sigue aplicándose al clip.
+
+### Arreglado
+- Los looks sin filtro base ahora también pintan saturación, tinte, lavado y viñeta cuando van en barra.
+
 ## [0.0.10] — 2026-10-29 · Beta
 Beta de arreglos (guardado a prueba de fallas, segunda tanda). La app muestra "Beta 0.0.10". Windows y Mac a la par.
 ### Arreglado

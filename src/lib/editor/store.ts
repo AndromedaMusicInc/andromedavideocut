@@ -20,6 +20,7 @@ import {
 } from "@/lib/editor/reel";
 import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
+import { lookSpan } from "@/lib/editor/look-span";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
 import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
 import { insertLane, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
@@ -27,6 +28,7 @@ import {
   DEMO_CLIPS,
   EFFECTS,
   GRADES,
+  FILTERS,
   makeClip,
   textPaint,
   uid,
@@ -131,7 +133,7 @@ export interface EditorState {
   setFilter: (id: FilterId) => void;
   setGrade: (id: string) => void;
   setEffect: (id: EffectId) => void;
-  placeAdjust: (kind: "grade" | "filter" | "effect", id: string, name: string, time?: number, createTrack?: boolean) => void;
+  placeAdjust: (kind: "grade" | "filter" | "effect", id: string, name: string, time?: number, createTrack?: boolean, fromClick?: boolean) => void;
   setTransition: (id: TransitionId) => void;
   loadSaved: (saved: SavedProject) => void;
   setAssets: (assets: Asset[]) => void;
@@ -708,42 +710,17 @@ export const useEditor = create<EditorState>((set, get) => ({
     get().tell("Estilo pegado.");
   },
   setFilter: (id) => {
-    const selected = get().clips.find((clip) => clip.id === get().selectedId);
-    const target =
-      selected && selected.type !== "audio" && selected.type !== "text"
-        ? selected
-        : get().clips.find(
-            (clip) =>
-              clip.trackId === "v1" &&
-              playback.time >= clip.start &&
-              playback.time < clip.start + clip.duration,
-          );
-    if (!target) {
-      get().tell("Selecciona el video. El filtro solo cambia ese pedazo.");
+    if (id === "none") {
+      get().tell("Para quitar un filtro, borra su barra en la pista de efectos.");
       return;
     }
-    get().patchClip(target.id, { filter: id });
-    set({ selectedId: target.id });
+    const name = FILTERS.find((item) => item.id === id)?.name ?? "Filtro";
+    get().placeAdjust("filter", id, name, playback.time, false, true);
   },
   setGrade: (id) => {
     const grade = GRADES.find((item) => item.id === id);
-    const selected = get().clips.find((clip) => clip.id === get().selectedId);
-    const target =
-      selected && selected.type !== "audio" && selected.type !== "text" && selected.type !== "fx"
-        ? selected
-        : get().clips.find(
-            (clip) =>
-              clip.trackId === "v1" &&
-              playback.time >= clip.start &&
-              playback.time < clip.start + clip.duration,
-          );
-    if (!grade || !target) {
-      get().tell("Selecciona el video. El look solo cambia ese pedazo.");
-      return;
-    }
-    get().patchClip(target.id, grade.patch);
-    set({ selectedId: target.id });
-    get().tell(`${grade.name} aplicado. Brillo y temperatura siguen en Ajustes.`);
+    if (!grade) return;
+    get().placeAdjust("grade", id, grade.name, playback.time, false, true);
   },
   setEffect: (id) => {
     const before = snap(get());
@@ -816,11 +793,14 @@ export const useEditor = create<EditorState>((set, get) => ({
       future: [],
     });
   },
-  placeAdjust: (kind, id, name, time, forceNew = false) => {
+  placeAdjust: (kind, id, name, time, forceNew = false, fromClick = false) => {
     const before = snap(get());
-    const duration = 4;
-    const trackId = takeLane(forceNew);
-    const start = findSlot(get().clips, trackId, Math.max(0, time ?? playback.time), duration);
+    const at = Math.max(0, time ?? playback.time);
+    const span = fromClick ? lookSpan(get().clips, at, get().selectedId) : null;
+    const duration = span ? span.duration : 4;
+    const fxLane = get().trackOrder.find((track) => track.startsWith("fx"));
+    const trackId = fromClick && fxLane ? fxLane : takeLane(fromClick ? false : forceNew);
+    const start = findSlot(get().clips, trackId, span ? span.start : at, duration);
     const base = makeClip({
       id: uid(),
       type: "fx",
@@ -846,7 +826,8 @@ export const useEditor = create<EditorState>((set, get) => ({
       past: [...get().past, before].slice(-60),
       future: [],
     });
-    get().tell(readLaneIntent().mode === "on" && !forceNew ? `${name} en el canal.` : `${name} en un canal nuevo.`);
+    if (fromClick) get().tell(`${name} encima del video. Arrastra los bordes de la barra para elegir el tramo.`);
+    else get().tell(readLaneIntent().mode === "on" && !forceNew ? `${name} en el canal.` : `${name} en un canal nuevo.`);
   },
   setTransition: (id) => {
     const selected = get().clips.find((clip) => clip.id === get().selectedId);

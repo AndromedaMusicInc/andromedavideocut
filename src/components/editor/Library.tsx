@@ -57,7 +57,7 @@ function previewKey(item: DragItem) {
   return `${r.kind}:${r.id ?? r.name ?? ""}`;
 }
 /** Props para looks/filtros/efectos/fundidos: clic = vista previa, arrastrar = agregar. */
-function fxProps(preview: PreviewItem, onDrop: ((hit: DropHit) => void) | null, dragKind: "effect" | "transition") {
+function fxProps(preview: PreviewItem, onDrop: ((hit: DropHit) => void) | null, dragKind: "effect" | "transition", onTap?: () => void) {
   const key = `${preview.kind}:${"id" in preview ? preview.id : ""}`;
   return {
     "data-lib-item": key,
@@ -72,6 +72,11 @@ function fxProps(preview: PreviewItem, onDrop: ((hit: DropHit) => void) | null, 
     },
     onClick: () => {
       if (eatenClick()) return;
+      if (onTap) {
+        useLibPreview.getState().clear();
+        onTap();
+        return;
+      }
       toggleLibPreview(preview, key);
     },
   };
@@ -477,6 +482,7 @@ function MiniSticker({ id }: { id: string }) {
 
 function FilterPane() {
   const setFilter = useEditor((s) => s.setFilter);
+  const setGrade = useEditor((s) => s.setGrade);
   const selected = useEditor((s) => s.clips.find((clip) => clip.id === s.selectedId));
   const [query, setQuery] = useState("");
   const groups = Array.from(new Set(GRADES.map((item) => item.group)));
@@ -491,7 +497,7 @@ function FilterPane() {
       <div>
         <h2 className="text-sm font-semibold text-fg">Looks de película</h2>
         <p className="mt-1 text-sm text-muted">
-          Arrástralo a un canal, o entre dos canales para abrir uno nuevo. Tócalo para ver cómo queda (vista previa); arrástralo para usarlo.
+          Arrástralo a un canal, o entre dos canales para abrir uno nuevo. Tócalo para ponerlo encima del video bajo el cabezal; luego estira o mueve la barra.
         </p>
       </div>
       <input
@@ -510,7 +516,7 @@ function FilterPane() {
                 <button
                   key={item.id}
                   type="button"
-                  {...fxProps({ kind: "grade", id: item.id, name: item.name }, (hit) => useEditor.getState().placeAdjust("grade", item.id, item.name, hit.time), "effect")}
+                  {...fxProps({ kind: "grade", id: item.id, name: item.name }, (hit) => useEditor.getState().placeAdjust("grade", item.id, item.name, hit.time), "effect", () => setGrade(item.id))}
                   className="overflow-hidden rounded-md border border-line text-left hover:border-accent"
                 >
                   <GradeThumb patch={item.patch} />
@@ -530,7 +536,7 @@ function FilterPane() {
             <button
               key={item.id}
               type="button"
-              {...fxProps({ kind: "filter", id: item.id, name: item.name }, item.id === "none" ? null : (hit) => useEditor.getState().placeAdjust("filter", item.id, item.name, hit.time), "effect")}
+              {...fxProps({ kind: "filter", id: item.id, name: item.name }, item.id === "none" ? null : (hit) => useEditor.getState().placeAdjust("filter", item.id, item.name, hit.time), "effect", item.id === "none" ? undefined : () => setFilter(item.id))}
               className={cn(
                 "overflow-hidden rounded-md border text-left",
                 active ? "border-accent" : "border-line",

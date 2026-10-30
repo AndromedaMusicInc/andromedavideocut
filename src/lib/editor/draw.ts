@@ -1027,7 +1027,7 @@ function stampFx(ctx: CanvasRenderingContext2D, w: number, h: number, time: numb
     .sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));
   for (const clip of active) {
     if (clip.filter && clip.filter !== "none") applyAdjust(ctx, clip, w, h);
-    else if ((clip.brightness ?? 1) !== 1 || (clip.contrast ?? 1) !== 1 || Math.abs(clip.temperature ?? 0) > 0.02) {
+    else if ((clip.brightness ?? 1) !== 1 || (clip.contrast ?? 1) !== 1 || Math.abs((clip.saturate ?? 1) - 1) > 0.015 || Math.abs(clip.temperature ?? 0) > 0.02 || Math.abs(clip.tint ?? 0) > 0.02 || (clip.wash ?? 0) > 0.01 || (clip.vignette ?? 0) > 0.01) {
       applyAdjust(ctx, clip, w, h);
     }
     if (clip.effect && clip.effect !== "none") stampEffect(ctx, clip.effect, w, h, time - clip.start);
