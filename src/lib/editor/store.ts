@@ -23,7 +23,7 @@ import { REEL_TEMPLATES } from "@/lib/editor/templates";
 import { lookSpan } from "@/lib/editor/look-span";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
 import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
-import { insertLane, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
+import { fxLaneFor, insertLane, isVideoTrack, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
 import {
   DEMO_CLIPS,
   EFFECTS,
@@ -784,9 +784,20 @@ export const useEditor = create<EditorState>((set, get) => ({
     const at = Math.max(0, time ?? playback.time);
     const span = fromClick ? lookSpan(get().clips, at, get().selectedId) : null;
     const duration = span ? span.duration : 4;
-    const fxLane = get().trackOrder.find((track) => track.startsWith("fx"));
-    const trackId = fromClick && fxLane ? fxLane : takeLane(fromClick ? false : forceNew);
-    const start = findSlot(get().clips, trackId, span ? span.start : at, duration);
+    let trackId: string;
+    let start: number;
+    const intent = readLaneIntent();
+    if (!fromClick && (forceNew || intent.mode !== "on")) {
+      trackId = takeLane(forceNew);
+      start = findSlot(get().clips, trackId, at, duration);
+    } else {
+      // 0.0.13: encima del video en el mismo tiempo; si está ocupado, canal nuevo arriba (no se corre a la derecha).
+      const pref = !fromClick && intent.trackId && !isVideoTrack(intent.trackId) ? intent.trackId : null;
+      start = span ? span.start : at;
+      const lane = fxLaneFor(get().trackOrder, get().clips, start, duration, pref);
+      if (lane.created) set({ trackOrder: lane.order });
+      trackId = lane.trackId;
+    }
     const base = makeClip({
       id: uid(),
       type: "fx",
@@ -1037,6 +1048,29 @@ export const useEditor = create<EditorState>((set, get) => ({
       return;
     }
     const before = snap(get());
+    if (item.kind === "effect") {
+      // 0.0.13: un efecto soltado sobre el video (o en un canal ocupado) va encima, alineado con el clip bajo el drop.
+      const intent = readLaneIntent();
+      if (intent.mode === "on" || !intent.trackId) {
+        const at = Math.max(0, time);
+        const onClip = get().clips.find(
+          (c) => c.trackId === trackId && (c.type === "video" || c.type === "image" || c.type === "generator") && at >= c.start && at < c.start + c.duration,
+        );
+        const start = onClip ? onClip.start : at;
+        const duration = onClip ? Math.min(8, Math.max(1.2, onClip.duration)) : 3;
+        const pref = trackId && !isVideoTrack(trackId) && trackId !== "a1" ? trackId : null;
+        const lane = fxLaneFor(get().trackOrder, get().clips, start, duration, pref);
+        const clip = makeClip({ id: uid(), type: "fx", trackId: lane.trackId, name: item.name, start, duration, effect: item.id as EffectId });
+        set({
+          clips: [...get().clips, clip],
+          trackOrder: lane.order,
+          selectedId: clip.id,
+          past: [...get().past, before].slice(-60),
+          future: [],
+        });
+        return;
+      }
+    }
     const dest = takeLane(false, trackId);
     const placed = buildPlacement(item, get().assets, get().clips, get().layers, dest, time);
     if (!placed) {

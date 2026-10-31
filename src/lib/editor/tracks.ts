@@ -178,3 +178,31 @@ export function paintOrder(layers: number, clips: Pick<Clip, "trackId">[]) {
   const sorted = [...ids].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
   return [...sorted, "o1", "t1"];
 }
+
+/**
+ * 0.0.13: canal para una barra fx (efecto, filtro o look) que debe quedar ENCIMA del video en el mismo tiempo.
+ * Antes se usaba findSlot en un canal fijo: si el tramo estaba ocupado la barra se corría a la derecha ("al lado")
+ * y al soltarla sobre el video caía en el propio canal de video. Ahora busca un canal de efectos libre en ese tramo
+ * (los que están arriba del primer canal de video) y, si no hay, crea uno nuevo arriba de ellos. Nunca corre el tiempo.
+ */
+export function fxLaneFor(
+  order: string[],
+  clips: Pick<Clip, "trackId" | "start" | "duration" | "type">[],
+  start: number,
+  duration: number,
+  preferred: string | null = null,
+) {
+  const free = (id: string) =>
+    !clips.some((c) => c.trackId === id && start < c.start + c.duration - 0.02 && start + duration > c.start + 0.02);
+  const onlyFx = (id: string) => clips.every((c) => c.trackId !== id || c.type === "fx");
+  const firstVideo = order.findIndex((id) => isVideoTrack(id));
+  const above = firstVideo < 0 ? order : order.slice(0, firstVideo);
+  const lanes = above.filter((id) => isFxTrack(id) || (/^lane\d+$/.test(id) && onlyFx(id)));
+  if (preferred && lanes.includes(preferred) && free(preferred)) return { order, trackId: preferred, created: false };
+  for (let i = lanes.length - 1; i >= 0; i -= 1) {
+    if (free(lanes[i]!)) return { order, trackId: lanes[i]!, created: false };
+  }
+  const anchor = lanes[0] ?? (firstVideo >= 0 ? order[firstVideo]! : null);
+  const placed = insertLane(order, anchor, "before");
+  return { order: placed.order, trackId: placed.id, created: true };
+}

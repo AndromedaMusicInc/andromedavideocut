@@ -9,6 +9,14 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.13] — 2026-10-30 · Beta
+
+### Arreglado
+- Efectos, filtros y looks: la barra fx ahora queda **encima del video, en el mismo tiempo**. Antes, si el tramo ya
+  tenía una barra, la nueva se corría a la derecha ("al lado"), y un efecto soltado sobre el clip caía en la pista de
+  video. Ahora, si el tramo está ocupado, se crea un canal de efectos nuevo arriba; al soltar un efecto sobre un clip,
+  la barra se alinea con ese clip.
+
 ## [0.0.12] — 2026-10-30 · Beta
 
 ### Cambiado
