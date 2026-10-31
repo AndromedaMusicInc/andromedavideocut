@@ -9,6 +9,17 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.12] — 2026-10-30 · Beta
+
+### Cambiado
+- **Windows: actualizaciones dentro de la app.** Se instalan en silencio, sin abrir el asistente del instalador,
+  en la misma carpeta elegida al instalar, y la app se reabre sola. Aplica a partir de la actualización que llega
+  después de instalar la 0.0.12.
+- Mac sin cambios: avisa y abre la descarga del .dmg.
+
+### Corregido
+- «Al cerrar la app» no instalaba la actualización descargada (el instalador al cerrar se registraba antes de la respuesta).
+
 ## [0.0.11] — 2026-10-30 · Beta
 
 ### Cambiado

@@ -35,7 +35,11 @@ function setupUpdater(updater, hooks = {}) {
   updater.allowPrerelease = false;
   // Nunca bajar de versión (un PC con 1.0.x no pasa a 0.0.x: hay que reinstalar a mano).
   updater.allowDowngrade = false;
-  updater.autoInstallOnAppQuit = false;
+  // Windows: la actualización se instala en silencio (NSIS /S, sin asistente) y reutiliza la carpeta
+  // de instalación guardada. Debe estar en true ANTES de terminar la descarga: electron-updater registra el
+  // instalador "al cerrar" justo al terminarla (antes de que el usuario responda el diálogo). Solo se descarga
+  // con el OK del usuario, así que no instala nada sin preguntar.
+  updater.autoInstallOnAppQuit = true;
   let manual = false;
   let busy = false;
 
@@ -76,7 +80,7 @@ function setupUpdater(updater, hooks = {}) {
       type: "question",
       title: "Actualización disponible",
       message: `Hay una nueva versión ${info.version}, ¿actualizar?`,
-      detail: `Tienes la ${app.getVersion()}. Se descargará ahora y se instalará al terminar.`,
+      detail: `Tienes la ${app.getVersion()}. Se descarga ahora y se instala dentro de la app, sin abrir el instalador.`,
       buttons: ["Actualizar", "Más tarde"],
       defaultId: 0,
       cancelId: 1,
@@ -104,16 +108,18 @@ function setupUpdater(updater, hooks = {}) {
       type: "info",
       title: "Actualización lista",
       message: `La versión ${info.version} está lista.`,
-      detail: "AndromedaVideoCut se cerrará para instalarla y se volverá a abrir. Guarda tu trabajo: el proyecto se guarda solo.",
-      buttons: ["Instalar y reiniciar", "Al cerrar la app"],
+      detail: "Instalando actualización, la app se reabrirá sola en unos segundos. Tu proyecto se guarda solo. Si eliges «Al cerrar la app», se instalará en silencio cuando cierres AndromedaVideoCut.",
+      buttons: ["Actualizar ahora", "Al cerrar la app"],
       defaultId: 0,
       cancelId: 1,
     });
     if (choice === 0) {
-      log("instalando");
-      if (!process.env.AVC_UPDATER_TEST) updater.quitAndInstall(false, true);
+      log("instalando en silencio");
+      setTitle("instalando actualización, la app se reabrirá");
+      // isSilent=true: sin asistente del instalador; isForceRunAfter=true: reabre la app al terminar.
+      if (!process.env.AVC_UPDATER_TEST) updater.quitAndInstall(true, true);
     } else {
-      updater.autoInstallOnAppQuit = true;
+      log("se instalará en silencio al cerrar la app");
     }
   });
   updater.on("error", async (err) => {
