@@ -185,6 +185,11 @@ export function paintOrder(layers: number, clips: Pick<Clip, "trackId">[]) {
  * y al soltarla sobre el video caía en el propio canal de video. Ahora busca un canal de efectos libre en ese tramo
  * (los que están arriba del primer canal de video) y, si no hay, crea uno nuevo arriba de ellos. Nunca corre el tiempo.
  */
+/** 0.0.14: canal con clips visuales (o canal de video): nunca recibe barras fx. */
+export function isVisualLane(id: string, clips: Pick<Clip, "trackId" | "type">[]) {
+  return isVideoTrack(id) || clips.some((c) => c.trackId === id && c.type !== "fx");
+}
+
 export function fxLaneFor(
   order: string[],
   clips: Pick<Clip, "trackId" | "start" | "duration" | "type">[],

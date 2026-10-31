@@ -5,7 +5,7 @@ import { playback } from "@/lib/editor/playback";
 import { registerHitTest, subscribeDragPoint, setLaneIntent, readLaneIntent, publishDrag, commitLaneAt, registerLaneResolver, setCursorTag, type DragPoint } from "@/lib/editor/place";
 import { limitDuration, pickJoin, useEditor } from "@/lib/editor/store";
 import { formatTime, findSlot, snapMove, snapTo, timelineSpan } from "@/lib/editor/time";
-import { LANE_INSERT_EDGE, laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
+import { fxLaneFor, isVisualLane, LANE_INSERT_EDGE, laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
 import type { Clip } from "@/lib/editor/types";
 import { TRANSITIONS } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
@@ -792,7 +792,8 @@ function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" 
       }
       publishDrag({ x: ev.clientX, y: ev.clientY, kind: "video" });
       const intent = readLaneIntent();
-      if (intent.mode === "on" && intent.trackId) {
+      // 0.0.14: una barra fx no se pasa a un canal con clips visuales (antes caía ahí y se corría detrás de los videos).
+      if (intent.mode === "on" && intent.trackId && !(clip.type === "fx" && isVisualLane(intent.trackId, now.clips))) {
         now.patchClip(clip.id, { start, trackId: intent.trackId }, false);
         return;
       }
@@ -831,7 +832,19 @@ function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" 
       if (order.join() !== latest.trackOrder.join()) useEditor.setState({ trackOrder: order });
       cur = useEditor.getState().clips.find((item) => item.id === clip.id);
     }
-    if (cur && mode === "move") {
+    if (cur && mode === "move" && cur.type === "fx") {
+      // 0.0.14: una barra fx movida nunca se corre en el tiempo: si choca, o quedó en un canal visual, va a un canal fx
+      // libre en ese mismo tramo (o a uno nuevo arriba).
+      const latest = useEditor.getState();
+      const others = latest.clips.filter((item) => item.id !== cur!.id);
+      const clash = others.some((c) => c.trackId === cur!.trackId && cur!.start < c.start + c.duration - 0.02 && cur!.start + cur!.duration > c.start + 0.02);
+      if (clash || isVisualLane(cur.trackId, others)) {
+        const lane = fxLaneFor(latest.trackOrder, others, cur.start, cur.duration);
+        if (lane.created) useEditor.setState({ trackOrder: lane.order });
+        useEditor.getState().patchClip(cur.id, { trackId: lane.trackId }, false);
+        cur = useEditor.getState().clips.find((item) => item.id === clip.id);
+      }
+    } else if (cur && mode === "move") {
       const slot = findSlot(
         useEditor.getState().clips.filter((item) => item.id !== cur!.id),
         cur.trackId,

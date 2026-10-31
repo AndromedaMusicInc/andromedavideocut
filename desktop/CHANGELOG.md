@@ -9,6 +9,17 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.14] — 2026-10-30 · Beta
+
+### Arreglado
+- **Filtros, looks y efectos siempre van en la pista Efectos, encima del video.** Con un canal "Canal" lleno de clips
+  (por ejemplo generadores arrastrados entre Efectos y Base), mover una barra fx sobre ese canal la metía ahí y se corría
+  detrás de los videos. Ahora una barra fx nunca entra en un canal con clips visuales: si choca, pasa a un canal fx libre
+  en el mismo tramo o a uno nuevo arriba, sin correrse en el tiempo.
+- **La barra empieza en el clip.** Con clic toma el clip seleccionado o el que está bajo el cabezal (en cualquier canal);
+  si el cabezal está en un hueco, la barra fx seleccionada o el siguiente clip. Al arrastrar, toma el clip bajo el punto
+  de soltar (antes quedaba en el segundo 0 o donde se soltó).
+
 ## [0.0.13] — 2026-10-30 · Beta
 
 ### Arreglado

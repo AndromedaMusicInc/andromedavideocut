@@ -20,10 +20,10 @@ import {
 } from "@/lib/editor/reel";
 import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
-import { lookSpan } from "@/lib/editor/look-span";
+import { dropSpan, lookSpan } from "@/lib/editor/look-span";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
 import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
-import { fxLaneFor, insertLane, isVideoTrack, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
+import { fxLaneFor, insertLane, isVisualLane, isVideoTrack, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
 import {
   DEMO_CLIPS,
   EFFECTS,
@@ -783,17 +783,22 @@ export const useEditor = create<EditorState>((set, get) => ({
     const before = snap(get());
     const at = Math.max(0, time ?? playback.time);
     const span = fromClick ? lookSpan(get().clips, at, get().selectedId) : null;
-    const duration = span ? span.duration : 4;
+    let duration = span ? span.duration : 4;
     let trackId: string;
     let start: number;
     const intent = readLaneIntent();
+    // 0.0.14: arrastrada, la barra toma el tramo del clip visual bajo el punto de soltar (en cualquier canal).
+    const drop = fromClick ? null : dropSpan(get().clips, intent.trackId, at);
     if (!fromClick && (forceNew || intent.mode !== "on")) {
       trackId = takeLane(forceNew);
-      start = findSlot(get().clips, trackId, at, duration);
+      start = drop!.start;
+      duration = drop!.duration;
     } else {
       // 0.0.13: encima del video en el mismo tiempo; si está ocupado, canal nuevo arriba (no se corre a la derecha).
-      const pref = !fromClick && intent.trackId && !isVideoTrack(intent.trackId) ? intent.trackId : null;
-      start = span ? span.start : at;
+      // 0.0.14: nunca en un canal con clips visuales ("Canal" con videos o generadores), aunque se suelte ahí.
+      const pref = !fromClick && intent.trackId && !isVisualLane(intent.trackId, get().clips) ? intent.trackId : null;
+      start = span ? span.start : drop!.start;
+      if (drop) duration = drop.duration;
       const lane = fxLaneFor(get().trackOrder, get().clips, start, duration, pref);
       if (lane.created) set({ trackOrder: lane.order });
       trackId = lane.trackId;
@@ -1052,13 +1057,8 @@ export const useEditor = create<EditorState>((set, get) => ({
       // 0.0.13: un efecto soltado sobre el video (o en un canal ocupado) va encima, alineado con el clip bajo el drop.
       const intent = readLaneIntent();
       if (intent.mode === "on" || !intent.trackId) {
-        const at = Math.max(0, time);
-        const onClip = get().clips.find(
-          (c) => c.trackId === trackId && (c.type === "video" || c.type === "image" || c.type === "generator") && at >= c.start && at < c.start + c.duration,
-        );
-        const start = onClip ? onClip.start : at;
-        const duration = onClip ? Math.min(8, Math.max(1.2, onClip.duration)) : 3;
-        const pref = trackId && !isVideoTrack(trackId) && trackId !== "a1" ? trackId : null;
+        const { start, duration } = dropSpan(get().clips, trackId, time, 3);
+        const pref = trackId && !isVisualLane(trackId, get().clips) && trackId !== "a1" ? trackId : null;
         const lane = fxLaneFor(get().trackOrder, get().clips, start, duration, pref);
         const clip = makeClip({ id: uid(), type: "fx", trackId: lane.trackId, name: item.name, start, duration, effect: item.id as EffectId });
         set({
@@ -1079,7 +1079,14 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     if (dest) {
       placed.clip.trackId = dest;
-      placed.clip.start = findSlot(get().clips, dest, Math.max(0, time), placed.clip.duration);
+      if (item.kind === "effect") {
+        // 0.0.14: canal nuevo para el efecto: mismo tramo que el clip bajo el punto de soltar, sin correrse.
+        const span = dropSpan(get().clips, trackId, time, 3);
+        placed.clip.start = span.start;
+        placed.clip.duration = span.duration;
+      } else {
+        placed.clip.start = findSlot(get().clips, dest, Math.max(0, time), placed.clip.duration);
+      }
     }
     const clips = [...get().clips, placed.clip];
     set({
