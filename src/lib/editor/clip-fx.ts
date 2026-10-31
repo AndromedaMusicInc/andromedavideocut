@@ -22,8 +22,9 @@ export function normalizeBands(raw: unknown, duration: number): ClipFx[] | undef
     if (!item || typeof item !== "object") continue;
     const b = item as Partial<ClipFx>;
     if (!b.id || (b.kind !== "filter" && b.kind !== "effect" && b.kind !== "grade")) continue;
-    const start = Number(b.start) || 0;
-    const end = Number.isFinite(Number(b.end)) ? Number(b.end) : duration;
+    const start = Math.max(0, Math.min(duration, Number(b.start) || 0));
+    const end = Math.max(0, Math.min(duration, Number.isFinite(Number(b.end)) ? Number(b.end) : duration));
+    if (start >= duration) continue;
     out.push(clampBand({ id: String(b.id), kind: b.kind, ref: String(b.ref ?? ""), name: String(b.name ?? "Efecto"), intensity: Math.max(0, Math.min(1, Number(b.intensity ?? 1))), start, end }, duration));
   }
   return out;

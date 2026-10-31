@@ -22,6 +22,9 @@ versionado [SemVer](https://semver.org/lang/es/).
 - Las capas siguen al clip al moverlo, recortarlo (quedan sobre el mismo contenido) y dividirlo (cada pedazo se queda
   con su parte). Deshacer/rehacer funciona con todo.
 
+### Corregido
+- Al abrir un proyecto, una capa de filtro/efecto que terminaba después del final del clip se corría al inicio; ahora se recorta y conserva su inicio (y se descarta si empieza después del final).
+
 ### Se mantiene
 - Soltar en la línea **"Canal nuevo"** sigue creando una barra en una pista de efectos aparte (opción secundaria).
 - Los proyectos viejos con barras fx abren y se ven igual.

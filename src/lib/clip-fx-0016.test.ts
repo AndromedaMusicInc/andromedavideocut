@@ -51,3 +51,14 @@ describe("0.0.16: filtros dentro del clip", () => {
     assert.equal(normalizeBands(undefined, 5), undefined);
   });
 });
+
+describe("0.0.16: normalizeBands recorta en vez de correr", () => {
+  it("una capa que termina después del clip se recorta y conserva su inicio", () => {
+    const [b] = normalizeBands([{ id: "z1", kind: "filter", ref: "warm", name: "W", start: 1, end: 99 }], 3)!;
+    assert.equal(b.start, 1);
+    assert.equal(b.end, 3);
+  });
+  it("descarta una capa que empieza después del final del clip", () => {
+    assert.deepEqual(normalizeBands([{ id: "z2", kind: "filter", ref: "warm", start: 5, end: 9 }], 3), []);
+  });
+});
