@@ -1,5 +1,6 @@
 import { useEditor, limitDuration } from "@/lib/editor/store";
 import { isVideoTrack } from "@/lib/editor/tracks";
+import { fxKindOf } from "@/lib/editor/look-span";
 import { TEXT_COLORS, TEXT_FONTS, TEXT_LOOKS, TEXT_ANIMS, TEXT_SHADOWS, EFFECTS, ENTERS, LEAVES, MIDS, FILTERS, lookFields, lookPreviewStyle, sameLook, textFont, type Clip } from "@/lib/editor/types";
 import { alignMark, centerAt } from "@/lib/editor/align";
 import { cn } from "@/lib/cn";
@@ -834,24 +835,40 @@ function Pick<T extends string>({
 
 function FxInspector({ clip }: { clip: Clip }) {
   const patchClip = useEditor((s) => s.patchClip);
+  const kind = fxKindOf(clip);
+  const title = kind === "effect" ? "Efecto" : kind === "filter" ? "Filtro" : "Look";
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="text-xs tracking-wide text-faint uppercase">Efecto</p>
+        <p className="text-xs tracking-wide text-faint uppercase">{title}</p>
         <h2 className="truncate text-sm font-semibold text-fg">{clip.name}</h2>
         <p className="mt-1 text-sm text-pretty text-muted">
-          Solo cubre el tramo de la barra. Arrastra los bordes en la línea para alargarlo o acortarlo.
+          Se aplica a todo lo que está debajo durante el tramo de la barra. Arrastra los bordes en la línea para alargarlo o acortarlo.
         </p>
       </div>
-      <Pick
-        label="Efecto"
-        value={clip.effect ?? "none"}
-        options={EFFECTS}
-        onChange={(id) => {
-          const name = EFFECTS.find((item) => item.id === id)?.name ?? clip.name;
-          patchClip(clip.id, { effect: id, name: id === "none" ? "Sin efecto" : name });
-        }}
-      />
+      {kind === "filter" ? (
+        <Pick
+          label="Filtro"
+          value={clip.filter ?? "none"}
+          options={FILTERS.filter((item) => item.id !== "none")}
+          onChange={(id) => {
+            const name = FILTERS.find((item) => item.id === id)?.name ?? clip.name;
+            patchClip(clip.id, { filter: id, name });
+          }}
+        />
+      ) : kind === "effect" ? (
+        <Pick
+          label="Efecto"
+          value={clip.effect ?? "none"}
+          options={EFFECTS.filter((item) => item.id !== "none")}
+          onChange={(id) => {
+            const name = EFFECTS.find((item) => item.id === id)?.name ?? clip.name;
+            patchClip(clip.id, { effect: id, name });
+          }}
+        />
+      ) : (
+        <p className="text-sm text-muted">Look aplicado: {clip.name}</p>
+      )}
     </div>
   );
 }

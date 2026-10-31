@@ -20,10 +20,10 @@ import {
 } from "@/lib/editor/reel";
 import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
-import { dropSpan, lookSpan } from "@/lib/editor/look-span";
+import { dropSpan, lookSpan, playheadInto } from "@/lib/editor/look-span";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
 import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
-import { fxLaneFor, insertLane, isVisualLane, isVideoTrack, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
+import { fxLaneFor, fxNewLane, insertLane, isVisualLane, isVideoTrack, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
 import {
   DEMO_CLIPS,
   EFFECTS,
@@ -782,24 +782,26 @@ export const useEditor = create<EditorState>((set, get) => ({
   placeAdjust: (kind, id, name, time, forceNew = false, fromClick = false) => {
     const before = snap(get());
     const at = Math.max(0, time ?? playback.time);
-    const span = fromClick ? lookSpan(get().clips, at, get().selectedId) : null;
-    let duration = span ? span.duration : 4;
-    let trackId: string;
-    let start: number;
+    const st = get();
     const intent = readLaneIntent();
-    // 0.0.14: arrastrada, la barra toma el tramo del clip visual bajo el punto de soltar (en cualquier canal).
-    const drop = fromClick ? null : dropSpan(get().clips, intent.trackId, at);
+    // Clic: tramo del clip visible bajo el cabezal (o de la barra fx seleccionada). Arrastre: clip bajo el punto de soltar.
+    const span = fromClick
+      ? lookSpan(st.clips, at, st.selectedId, st.trackOrder)
+      : dropSpan(st.clips, intent.trackId, at, 4, st.trackOrder);
+    const start = span.start;
+    const duration = span.duration;
+    let trackId: string;
     if (!fromClick && (forceNew || intent.mode !== "on")) {
-      trackId = takeLane(forceNew);
-      start = drop!.start;
-      duration = drop!.duration;
+      // 0.0.15: "Canal nuevo" crea un canal nuevo de verdad (antes podía terminar en Efectos detrás de otra barra),
+      // siempre encima de los canales con videos para que el filtro se vea.
+      const lane = fxNewLane(st.trackOrder, st.clips, forceNew ? { mode: "before", trackId: null } : { mode: intent.mode as "before" | "after", trackId: intent.trackId });
+      set({ trackOrder: lane.order });
+      trackId = lane.trackId;
     } else {
-      // 0.0.13: encima del video en el mismo tiempo; si está ocupado, canal nuevo arriba (no se corre a la derecha).
-      // 0.0.14: nunca en un canal con clips visuales ("Canal" con videos o generadores), aunque se suelte ahí.
-      const pref = !fromClick && intent.trackId && !isVisualLane(intent.trackId, get().clips) ? intent.trackId : null;
-      start = span ? span.start : drop!.start;
-      if (drop) duration = drop.duration;
-      const lane = fxLaneFor(get().trackOrder, get().clips, start, duration, pref);
+      // Encima del video en el mismo tiempo; si el canal fx está ocupado, canal nuevo arriba. Nunca reemplaza ni corre
+      // otra barra, y nunca va a un canal con clips visuales.
+      const pref = !fromClick && intent.trackId && !isVisualLane(intent.trackId, st.clips) ? intent.trackId : null;
+      const lane = fxLaneFor(st.trackOrder, st.clips, start, duration, pref);
       if (lane.created) set({ trackOrder: lane.order });
       trackId = lane.trackId;
     }
@@ -828,8 +830,9 @@ export const useEditor = create<EditorState>((set, get) => ({
       past: [...get().past, before].slice(-60),
       future: [],
     });
+    seekInto(start, duration);
     if (fromClick) get().tell(`${name} encima del video. Arrastra los bordes de la barra para elegir el tramo.`);
-    else get().tell(readLaneIntent().mode === "on" && !forceNew ? `${name} en el canal.` : `${name} en un canal nuevo.`);
+    else get().tell(intent.mode === "on" && !forceNew ? `${name} encima del video.` : `${name} en un canal nuevo.`);
   },
   setTransition: (id) => {
     const selected = get().clips.find((clip) => clip.id === get().selectedId);
@@ -1048,29 +1051,12 @@ export const useEditor = create<EditorState>((set, get) => ({
       dropTransition(item.id, time);
       return;
     }
-    if (item.kind === "grade" || item.kind === "filter") {
+    if (item.kind === "grade" || item.kind === "filter" || item.kind === "effect") {
+      // 0.0.15: efectos, filtros y looks soltados usan el mismo camino (canal nuevo respetado, nunca en canal de video).
       get().placeAdjust(item.kind, item.id, item.name, time);
       return;
     }
     const before = snap(get());
-    if (item.kind === "effect") {
-      // 0.0.13: un efecto soltado sobre el video (o en un canal ocupado) va encima, alineado con el clip bajo el drop.
-      const intent = readLaneIntent();
-      if (intent.mode === "on" || !intent.trackId) {
-        const { start, duration } = dropSpan(get().clips, trackId, time, 3);
-        const pref = trackId && !isVisualLane(trackId, get().clips) && trackId !== "a1" ? trackId : null;
-        const lane = fxLaneFor(get().trackOrder, get().clips, start, duration, pref);
-        const clip = makeClip({ id: uid(), type: "fx", trackId: lane.trackId, name: item.name, start, duration, effect: item.id as EffectId });
-        set({
-          clips: [...get().clips, clip],
-          trackOrder: lane.order,
-          selectedId: clip.id,
-          past: [...get().past, before].slice(-60),
-          future: [],
-        });
-        return;
-      }
-    }
     const dest = takeLane(false, trackId);
     const placed = buildPlacement(item, get().assets, get().clips, get().layers, dest, time);
     if (!placed) {
@@ -1079,14 +1065,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     if (dest) {
       placed.clip.trackId = dest;
-      if (item.kind === "effect") {
-        // 0.0.14: canal nuevo para el efecto: mismo tramo que el clip bajo el punto de soltar, sin correrse.
-        const span = dropSpan(get().clips, trackId, time, 3);
-        placed.clip.start = span.start;
-        placed.clip.duration = span.duration;
-      } else {
-        placed.clip.start = findSlot(get().clips, dest, Math.max(0, time), placed.clip.duration);
-      }
+      placed.clip.start = findSlot(get().clips, dest, Math.max(0, time), placed.clip.duration);
     }
     const clips = [...get().clips, placed.clip];
     set({
@@ -1100,6 +1079,15 @@ export const useEditor = create<EditorState>((set, get) => ({
     restartAudio(clips, get().muted);
   },
 }));
+
+/** 0.0.15: deja el cabezal dentro de la barra recién puesta para que el visor muestre el resultado al instante. */
+function seekInto(start: number, duration: number) {
+  if (useEditor.getState().playing) return;
+  const t = playheadInto(playback.time, start, duration);
+  if (t === playback.time) return;
+  playback.setTime(t);
+  useEditor.setState({ time: playback.time });
+}
 
 function takeLane(forceNew: boolean, fallback: string | null = null) {
   const api = useEditor.getState();

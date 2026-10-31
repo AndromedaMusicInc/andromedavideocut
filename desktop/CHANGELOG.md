@@ -9,6 +9,21 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.15] — 2026-10-31 · Beta
+
+### Corregido
+- **Filtros, looks y efectos ahora se ven en el visor al ponerlos.** La barra caía en otro tramo (p. ej. 0–4 s con el
+  cabezal en 9.3 s) y el visor no cambiaba: ahora el cabezal salta dentro de la barra recién puesta.
+- **Nunca se pisa ni se desordena otra barra fx:** si Efectos está ocupado en ese tramo se crea un canal nuevo arriba.
+- **"Canal nuevo" se respeta:** soltar un filtro/efecto en la línea de canal nuevo crea un canal nuevo de verdad (antes
+  terminaba en Efectos detrás de otra barra).
+- **Las barras fx siempre quedan encima de todos los canales con videos** (también los "Canal"), así el filtro se aplica
+  a todo lo que está debajo en el visor y en la exportación.
+- **Dos clics seguidos quedan alineados:** el segundo filtro usa el tramo de la barra seleccionada y la capa visible de
+  arriba, no la Base.
+- **Panel de propiedades:** muestra si la barra es Filtro, Efecto o Look y cuál está aplicado (antes decía "Efecto: Sin
+  efecto" para filtros y looks).
+
 ## [0.0.14] — 2026-10-30 · Beta
 
 ### Arreglado

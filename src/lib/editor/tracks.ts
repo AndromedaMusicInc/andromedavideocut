@@ -200,7 +200,9 @@ export function fxLaneFor(
   const free = (id: string) =>
     !clips.some((c) => c.trackId === id && start < c.start + c.duration - 0.02 && start + duration > c.start + 0.02);
   const onlyFx = (id: string) => clips.every((c) => c.trackId !== id || c.type === "fx");
-  const firstVideo = order.findIndex((id) => isVideoTrack(id));
+  // 0.0.15: el límite es el canal VISUAL más alto (también un "Canal" con videos), no solo v1/v2: una barra fx debajo de
+  // un Canal con videos quedaba tapada y el visor no cambiaba.
+  const firstVideo = topVisualIndex(order, clips);
   const above = firstVideo < 0 ? order : order.slice(0, firstVideo);
   const lanes = above.filter((id) => isFxTrack(id) || (/^lane\d+$/.test(id) && onlyFx(id)));
   if (preferred && lanes.includes(preferred) && free(preferred)) return { order, trackId: preferred, created: false };
@@ -210,4 +212,30 @@ export function fxLaneFor(
   const anchor = lanes[0] ?? (firstVideo >= 0 ? order[firstVideo]! : null);
   const placed = insertLane(order, anchor, "before");
   return { order: placed.order, trackId: placed.id, created: true };
+}
+
+/** 0.0.15: índice (en `order`, arriba primero) del canal visual más alto; -1 si no hay. */
+export function topVisualIndex(order: string[], clips: Pick<Clip, "trackId" | "type">[]) {
+  return order.findIndex((id) => isVisualLane(id, clips));
+}
+
+/**
+ * 0.0.15: "Canal nuevo" al soltar un filtro/look/efecto: se crea un canal nuevo de verdad donde está la línea, salvo que
+ * esa línea quede debajo de un canal con videos (ahí la barra no se vería); en ese caso va justo encima del canal visual
+ * más alto. Antes la barra terminaba en Efectos detrás de otra.
+ */
+export function fxNewLane(
+  order: string[],
+  clips: Pick<Clip, "trackId" | "type">[],
+  intent: { mode: "before" | "after"; trackId: string | null },
+) {
+  const top = topVisualIndex(order, clips);
+  const at = intent.trackId ? order.indexOf(intent.trackId) : -1;
+  const slot = at < 0 ? -1 : intent.mode === "before" ? at : at + 1;
+  if (at >= 0 && (top < 0 || slot <= top)) {
+    const placed = insertLane(order, intent.trackId, intent.mode);
+    return { order: placed.order, trackId: placed.id };
+  }
+  const placed = insertLane(order, top >= 0 ? order[top]! : (order[0] ?? null), "before");
+  return { order: placed.order, trackId: placed.id };
 }

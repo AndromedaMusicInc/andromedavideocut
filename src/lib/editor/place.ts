@@ -134,7 +134,9 @@ export function startLibraryDrag(
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
     window.removeEventListener("pointercancel", cancel);
-    if (dragging && drop) commitLaneAt(drop.clientY);
+    // 0.0.15: si la etiqueta mostraba "Canal nuevo" se respeta tal cual al soltar. Recalcular aquí (con la línea de
+    // inserción ya abierta, que mueve los canales) podía convertirlo en "Soltar en este canal" y la barra caía en Efectos.
+    if (dragging && drop && laneIntent.mode === "on") commitLaneAt(drop.clientY);
     const hit = dragging && drop ? resolveHit(drop.clientX, drop.clientY, last) : null;
     try {
       if (origin && pointerId != null && origin.hasPointerCapture(pointerId)) origin.releasePointerCapture(pointerId);
