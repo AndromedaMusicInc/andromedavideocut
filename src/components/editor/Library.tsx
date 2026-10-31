@@ -24,6 +24,7 @@ import {
   lookFields,
   lookPreviewStyle,
   textFont,
+  type EffectId,
   type TextDraft,
   type TextLook,
   type ToolId,
@@ -595,7 +596,7 @@ function EffectPane() {
                   <button
                     key={item.id}
                     type="button"
-                    {...fxProps({ kind: "effect", id: item.id, name: item.name }, (hit) => useEditor.getState().placeAdjust("effect", item.id, item.name, hit.time), "effect")}
+                    {...fxProps({ kind: "effect", id: item.id, name: item.name }, (hit) => useEditor.getState().placeAdjust("effect", item.id, item.name, hit.time), "effect", () => useEditor.getState().setEffect(item.id as EffectId))}
                     data-fx={item.id}
                     className={cn(
                       "overflow-hidden rounded-md border text-left",

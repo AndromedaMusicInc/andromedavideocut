@@ -775,23 +775,9 @@ export const useEditor = create<EditorState>((set, get) => ({
       get().tell("Fondo verde fuera. Si queda un halo, sube la tolerancia en Ajustes.");
       return;
     }
-    const start = target ? target.start : Math.max(0, playback.time);
-    const duration = target ? Math.min(8, Math.max(1.2, target.duration)) : 3;
-    const clip = makeClip({
-      id: uid(),
-      type: "fx",
-      trackId: "fx1",
-      name,
-      start: findSlot(get().clips, "fx1", start, duration),
-      duration,
-      effect: id,
-    });
-    set({
-      clips: [...get().clips, clip],
-      selectedId: clip.id,
-      past: [...get().past, before].slice(-60),
-      future: [],
-    });
+    // 0.0.12: el clic en un efecto crea la barra fx encima del video (mismo camino que filtros y looks),
+    // en la pista de efectos real y cubriendo el clip bajo el cabezal o el seleccionado.
+    get().placeAdjust("effect", id, name, playback.time, false, true);
   },
   placeAdjust: (kind, id, name, time, forceNew = false, fromClick = false) => {
     const before = snap(get());

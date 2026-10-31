@@ -19,6 +19,9 @@ versionado [SemVer](https://semver.org/lang/es/).
 
 ### Corregido
 - «Al cerrar la app» no instalaba la actualización descargada (el instalador al cerrar se registraba antes de la respuesta).
+- **Efectos con clic:** tocar un efecto en la biblioteca solo mostraba la vista previa y no ponía nada en la línea
+  de tiempo. Ahora crea la barra de efecto encima del video (cubre el clip bajo el cabezal o el seleccionado), y se
+  recorta por los bordes o se mueve para que cubra solo el tramo que quieras, igual que filtros y looks.
 
 ## [0.0.11] — 2026-10-30 · Beta
 
