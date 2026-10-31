@@ -23,6 +23,15 @@ versionado [SemVer](https://semver.org/lang/es/).
   arriba, no la Base.
 - **Panel de propiedades:** muestra si la barra es Filtro, Efecto o Look y cuál está aplicado (antes decía "Efecto: Sin
   efecto" para filtros y looks).
+- **Proyectos que no abrían o abrían vacíos:** un proyecto guardado por una 0.0.x anterior, recortado o editado a mano
+  (sin `clips`, sin `assets`, clips sin pista, números como texto, BOM al inicio) ahora se repara al abrirlo en vez de
+  descartarse. Antes abría vacío y el autoguardado podía pisarlo, o los medios no cargaban.
+- **Si el archivo del proyecto está dañado** (y su copia .bak también), se abre la última versión buena del historial
+  con un aviso claro; si no hay ninguna, se avisa en vez de abrir vacío en silencio. Un error al leer ya no deja el
+  editor colgado en "cargando".
+- **Los proyectos ya no desaparecen de Inicio si `index.json` se daña:** se usa su copia (.tmp/.bak, ahora se guarda
+  una) y, si no hay, el índice se rearma con los proyectos que hay en el disco. Antes la lista quedaba vacía y el
+  siguiente guardado borraba del índice todos los demás proyectos.
 
 ## [0.0.14] — 2026-10-30 · Beta
 

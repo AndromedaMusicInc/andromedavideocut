@@ -12,7 +12,7 @@ import { mixer } from "@/lib/editor/audio";
 import { pause, seek, togglePlay } from "@/lib/editor/engine";
 import { EXPORT_PRESETS, exportVideo, FRAME_RATES, loadPreset, openBlob, outputSize, QUALITIES, saveBlob, savePreset, type FrameRate, type PresetId, type QualityId } from "@/lib/editor/export";
 import { idbGet } from "@/lib/editor/persist";
-import { readProject, writeProject, type ProjectMeta } from "@/lib/editor/projects";
+import { openProjectData, writeProject, type ProjectMeta } from "@/lib/editor/projects";
 import { playback } from "@/lib/editor/playback";
 import { useEditor } from "@/lib/editor/store";
 import { ASPECTS, type AspectId, type Asset, type ToolId } from "@/lib/editor/types";
@@ -124,10 +124,12 @@ export function Editor({ project, onHome, tool: startTool }: { project: ProjectM
     seek(0);
     useEditor.setState({ hydrated: false });
     void (async () => {
-      const saved = await readProject(project.id);
+      const opened = await openProjectData(project);
       if (!alive) return;
-      if (saved) useEditor.getState().loadSaved(saved);
-      else useEditor.getState().loadSaved({ v: 1, name: project.name, aspect: project.aspect, clips: [], muted: {}, assets: [] });
+      const saved = opened.recovered === "vacio" ? null : opened.data;
+      useEditor.getState().loadSaved(opened.data);
+      if (opened.recovered === "version") useEditor.getState().tell("⚠ El archivo del proyecto estaba dañado. Se abrió la última versión buena del historial (Ayuda → Historial de versiones).");
+      else if (opened.error) useEditor.getState().tell("⚠ No se pudo leer el archivo del proyecto y no hay versiones guardadas. Se abrió vacío.");
       if (crashed) useEditor.getState().tell("La app se cerró de golpe la última vez. Se recuperó el último autoguardado; versiones anteriores en Ayuda → Historial de versiones.");
       (window as unknown as { __avcCrashRecovered?: boolean }).__avcCrashRecovered = crashed;
       useEditor.setState({ hydrated: true, selectedId: null, ...(startTool ? { tool: startTool } : {}) });

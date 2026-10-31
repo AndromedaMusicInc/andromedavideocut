@@ -2,6 +2,7 @@
 // Escritorio: archivos JSON en userData/projects (vía IPC). Web: localStorage.
 // Los archivos multimedia siguen en IndexedDB por id de recurso (en Electron también vive en userData).
 import { idbDelete, idbGet, idbPut, type SavedProject } from "@/lib/editor/persist";
+import { normalizeProject } from "@/lib/editor/project-normalize";
 import { deleteVersions, listVersions, readVersion } from "@/lib/editor/versions";
 import { DEMO_CLIPS, type AspectId, type Clip } from "@/lib/editor/types";
 
@@ -43,10 +44,25 @@ export function newId() {
 function lsIndex(): ProjectMeta[] {
   try {
     const list = JSON.parse(localStorage.getItem(INDEX_KEY) || "[]") as ProjectMeta[];
-    return Array.isArray(list) ? list : [];
+    if (Array.isArray(list)) return list.filter((m) => m && typeof m.id === "string");
   } catch {
-    return [];
+    /* índice dañado: se reconstruye abajo */
   }
+  return rebuildLsIndex();
+}
+/** 0.0.15: si el índice se daña, los proyectos no desaparecen: se rearma con los datos guardados. */
+function rebuildLsIndex(): ProjectMeta[] {
+  const out: ProjectMeta[] = [];
+  const prefix = DATA_KEY("");
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(prefix)) continue;
+    const data = normalizeProject(localStorage.getItem(key));
+    if (!data) continue;
+    const now = Date.now();
+    out.push({ id: key.slice(prefix.length), name: data.name, aspect: data.aspect, createdAt: now, updatedAt: now });
+  }
+  return out;
 }
 function lsSetIndex(list: ProjectMeta[]) {
   try {
@@ -102,13 +118,33 @@ export async function listProjectsFull(): Promise<ProjectMeta[]> {
 
 export async function readProject(id: string): Promise<SavedProject | null> {
   const d = desktop();
-  if (d) return d.read(id);
+  if (d) return normalizeProject(await d.read(id));
+  return normalizeProject(localStorage.getItem(DATA_KEY(id)));
+}
+
+export type OpenResult = { data: SavedProject; recovered: "no" | "version" | "vacio"; error?: string };
+
+/**
+ * 0.0.15: abrir nunca deja el editor colgado ni abre vacío en silencio. Si el archivo no se puede leer se usa la
+ * última versión buena del historial; si tampoco hay, se abre vacío con un aviso claro.
+ */
+export async function openProjectData(meta: Pick<ProjectMeta, "id" | "name" | "aspect">): Promise<OpenResult> {
+  let error: string | undefined;
   try {
-    const data = JSON.parse(localStorage.getItem(DATA_KEY(id)) || "null") as SavedProject | null;
-    return data && Array.isArray(data.clips) ? data : null;
-  } catch {
-    return null;
+    const data = await readProject(meta.id);
+    if (data) return { data, recovered: "no" };
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
   }
+  try {
+    for (const v of [...(await listVersions(meta.id))].sort((a, b) => b.ts - a.ts)) {
+      const data = normalizeProject(await readVersion(meta.id, v.ts).catch(() => null));
+      if (data && data.clips.length) return { data, recovered: "version", error };
+    }
+  } catch {
+    /* sin historial */
+  }
+  return { data: { v: 1, name: meta.name, aspect: meta.aspect, clips: [], muted: {}, assets: [] }, recovered: "vacio", error };
 }
 
 /** Guarda datos y/o metadatos. `data` null = solo metadatos (renombrar). */

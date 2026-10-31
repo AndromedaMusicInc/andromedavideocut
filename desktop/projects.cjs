@@ -19,13 +19,16 @@ function atomic(file, text, keepBak = false) {
 }
 // F1-01 (tanda 2): si quedó un .tmp huérfano (corte entre escribir y renombrar), válido y más nuevo
 // que el principal, se usa ese y se promueve a principal.
+// 0.0.15: un proyecto se acepta aunque le falte `clips` (lo repara el editor) y aunque tenga BOM al inicio.
+const parse = (f) => JSON.parse(fs.readFileSync(f, "utf8").replace(/^\uFEFF/, ""));
+const isProject = (d) => !!d && typeof d === "object" && !Array.isArray(d) && (Array.isArray(d.clips) || Array.isArray(d.assets) || d.v === 1 || typeof d.name === "string");
 function mtime(f) { try { return fs.statSync(f).mtimeMs; } catch { return -1; } }
 function readJson(file) {
   const tmp = `${file}.tmp`;
   if (fs.existsSync(tmp)) {
     try {
-      const d = JSON.parse(fs.readFileSync(tmp, "utf8"));
-      if (d && Array.isArray(d.clips) && mtime(tmp) > mtime(file)) {
+      const d = parse(tmp);
+      if (isProject(d) && mtime(tmp) > mtime(file)) {
         try { if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`); fs.renameSync(tmp, file); } catch { /* sigue */ }
         return d;
       }
@@ -34,20 +37,34 @@ function readJson(file) {
   }
   for (const f of [file, `${file}.bak`]) {
     try {
-      const d = JSON.parse(fs.readFileSync(f, "utf8"));
-      if (d && Array.isArray(d.clips)) return d;
+      const d = parse(f);
+      if (isProject(d)) return d;
     } catch { /* prueba la copia */ }
   }
   return null;
 }
 const hdir = (id) => path.join(dir(), "history", id);
-function readIndex() {
-  try {
-    const list = JSON.parse(fs.readFileSync(path.join(dir(), "index.json"), "utf8"));
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
+// 0.0.15: si index.json se daña (corte de luz, disco lleno) los proyectos ya no desaparecen de Inicio ni se
+// pierden al siguiente guardado: se prueba .tmp/.bak y, si no, se rearma el índice con los <id>.json del disco.
+function readIndex(base = dir()) {
+  const idx = path.join(base, "index.json");
+  for (const f of [idx, `${idx}.tmp`, `${idx}.bak`]) {
+    try {
+      const list = parse(f);
+      if (Array.isArray(list)) return list.filter((m) => m && idOk(m.id));
+    } catch { /* prueba el siguiente */ }
   }
+  let names = [];
+  try { names = fs.readdirSync(base).filter((n) => /^[A-Za-z0-9_-]{1,64}\.json$/.test(n) && n !== "index.json"); } catch { return []; }
+  const out = [];
+  for (const n of names) {
+    const file = path.join(base, n);
+    const d = readJson(file);
+    if (!d) continue;
+    const t = mtime(file);
+    out.push(cleanMeta({ id: n.slice(0, -5), name: d.name, aspect: d.aspect, createdAt: t, updatedAt: t }));
+  }
+  return out;
 }
 function cleanMeta(m) {
   return {
@@ -119,7 +136,7 @@ function registerProjectsIpc() {
         atomic(path.join(dir(), `${meta.id}.json`), text, true);
       }
       const list = readIndex().filter((p) => p.id !== meta.id);
-      atomic(path.join(dir(), "index.json"), JSON.stringify([cleanMeta(meta), ...list]));
+      atomic(path.join(dir(), "index.json"), JSON.stringify([cleanMeta(meta), ...list]), true);
       return true;
     } catch {
       return false;
@@ -147,4 +164,4 @@ function registerProjectsIpc() {
   });
 }
 
-module.exports = { registerProjectsIpc, readJson };
+module.exports = { registerProjectsIpc, readJson, readIndex };
