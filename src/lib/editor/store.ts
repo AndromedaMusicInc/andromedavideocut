@@ -21,6 +21,7 @@ import {
 import { assemblePack, STUDIO_PACKS } from "@/lib/editor/packs";
 import { REEL_TEMPLATES } from "@/lib/editor/templates";
 import { dropSpan, lookSpan, playheadInto } from "@/lib/editor/look-span";
+import { bandsOf, clampBand, fxTarget, normalizeBands, splitBands } from "@/lib/editor/clip-fx";
 import { buildPlacement, readLaneIntent, type DragItem } from "@/lib/editor/place";
 import { contentEnd, findSlot, pickJoin, sourceLength } from "@/lib/editor/time";
 import { fxLaneFor, fxNewLane, insertLane, isVisualLane, isVideoTrack, MAX_LAYERS, pruneTracks, resolveLane, restoreTrackOrder, visibleLayers } from "@/lib/editor/tracks";
@@ -35,6 +36,7 @@ import {
   type AspectId,
   type Asset,
   type Clip,
+  type ClipFx,
   type EffectId,
   type FilterId,
   type TextDraft,
@@ -66,6 +68,11 @@ export interface EditorState {
   pps: number;
   snap: boolean;
   selectedId: string | null;
+  /** 0.0.16: banda de filtro/efecto seleccionada dentro de un clip. */
+  selectedFx: { clipId: string; fxId: string } | null;
+  selectFx: (clipId: string, fxId: string | null) => void;
+  patchClipFx: (clipId: string, fxId: string, patch: Partial<ClipFx>, record?: boolean) => void;
+  removeClipFx: (clipId: string, fxId: string) => void;
   /** Selección múltiple (Ctrl+A, Mayús/Ctrl+clic). Incluye selectedId cuando hay más de uno. */
   selectedIds: string[];
   selectAll: () => void;
@@ -192,6 +199,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   pps: 68,
   snap: true,
   selectedId: "d-title",
+  selectedFx: null,
   selectedIds: [],
   tool: "reel",
   muted: {},
@@ -217,7 +225,27 @@ export const useEditor = create<EditorState>((set, get) => ({
   setTool: (tool) => set({ tool }),
   setPps: (pps) => set({ pps: Math.min(180, Math.max(28, pps)) }),
   toggleSnap: () => set((s) => ({ snap: !s.snap })),
-  select: (selectedId) => set({ selectedId, selectedIds: [] }),
+  select: (selectedId) => set({ selectedId, selectedIds: [], selectedFx: null }),
+  selectFx: (clipId, fxId) => set({ selectedId: clipId, selectedIds: [], selectedFx: fxId ? { clipId, fxId } : null }),
+  patchClipFx: (clipId, fxId, patch, record = true) => {
+    const before = record ? snap(get()) : null;
+    set((s) => ({
+      clips: s.clips.map((clip) =>
+        clip.id === clipId ? { ...clip, fx: bandsOf(clip).map((b) => (b.id === fxId ? clampBand({ ...b, ...patch }, clip.duration) : b)) } : clip,
+      ),
+      ...applyHist(before)(s),
+    }));
+  },
+  removeClipFx: (clipId, fxId) => {
+    const before = snap(get());
+    set((s) => ({
+      clips: s.clips.map((clip) => (clip.id === clipId ? { ...clip, fx: bandsOf(clip).filter((b) => b.id !== fxId) } : clip)),
+      selectedFx: null,
+      selectedId: clipId,
+      past: [...s.past, before].slice(-60),
+      future: [],
+    }));
+  },
   selectAll: () => {
     const ids = get().clips.map((clip) => clip.id);
     set({ selectedIds: ids, selectedId: ids[0] ?? null });
@@ -447,10 +475,12 @@ export const useEditor = create<EditorState>((set, get) => ({
     const leftDur = time - target.start;
     const next = get().clips.flatMap((clip) => {
       if (clip.id !== target.id) return [clip];
+      const [lf, rf] = splitBands(clip.fx, leftDur, clip.duration, uid);
       return [
-        { ...clip, duration: leftDur },
+        { ...clip, duration: leftDur, fx: lf },
         {
           ...clip,
+          fx: rf,
           id: uid(),
           start: time,
           duration: clip.duration - leftDur,
@@ -578,6 +608,11 @@ export const useEditor = create<EditorState>((set, get) => ({
     restartAudio(clips, get().muted);
   },
   deleteSelected: () => {
+    const fxSel = get().selectedFx;
+    if (fxSel && get().clips.some((c) => c.id === fxSel.clipId && bandsOf(c).some((b) => b.id === fxSel.fxId))) {
+      get().removeClipFx(fxSel.clipId, fxSel.fxId);
+      return;
+    }
     const id = get().selectedId;
     const many = new Set(get().selectedIds);
     if (id) many.add(id);
@@ -784,6 +819,24 @@ export const useEditor = create<EditorState>((set, get) => ({
     const at = Math.max(0, time ?? playback.time);
     const st = get();
     const intent = readLaneIntent();
+    // 0.0.16: el filtro/look/efecto cae DENTRO del clip como una capa propia (sub-fila del clip). La barra en un
+    // canal aparte queda solo para "Canal nuevo" o cuando no hay ningún video en ese tiempo.
+    const wantsLane = forceNew || (!fromClick && intent.mode !== "on");
+    const target = wantsLane ? null : fxTarget(st.clips, { trackId: intent.trackId, time: at, selectedId: st.selectedFx?.clipId ?? st.selectedId, order: st.trackOrder, fromClick });
+    if (target) {
+      const band: ClipFx = { id: uid(), kind: kind === "grade" ? "grade" : kind, ref: id, name, intensity: 1, start: 0, end: target.duration };
+      set({
+        clips: st.clips.map((clip) => (clip.id === target.id ? { ...clip, fx: [...bandsOf(clip), band] } : clip)),
+        selectedId: target.id,
+        selectedIds: [],
+        selectedFx: { clipId: target.id, fxId: band.id },
+        past: [...st.past, before].slice(-60),
+        future: [],
+      });
+      seekInto(target.start, target.duration);
+      get().tell(`${name} dentro de "${target.name}". Arrastra los bordes de la capa para achicarla.`);
+      return;
+    }
     // Clic: tramo del clip visible bajo el cabezal (o de la barra fx seleccionada). Arrastre: clip bajo el punto de soltar.
     const span = fromClick
       ? lookSpan(st.clips, at, st.selectedId, st.trackOrder)
@@ -851,7 +904,14 @@ export const useEditor = create<EditorState>((set, get) => ({
     set({ selectedId: target.id });
   },
   loadSaved: (saved) => {
-    const clips = (saved.clips ?? []).filter((c) => c && c.id && c.type).map((c) => makeClip({ ...c, name: c.name ?? "Clip", start: Number(c.start) || 0, duration: Number(c.duration) || 1 }));
+    const clips = (saved.clips ?? []).filter((c) => c && c.id && c.type).map((c) => {
+      const duration = Number(c.duration) || 1;
+      const clip = makeClip({ ...c, name: c.name ?? "Clip", start: Number(c.start) || 0, duration });
+      const fx = normalizeBands(c.fx, duration);
+      if (fx) clip.fx = fx;
+      else delete clip.fx;
+      return clip;
+    });
     set({
       name: saved.name || "Sin título",
       aspect: saved.aspect || "9:16",

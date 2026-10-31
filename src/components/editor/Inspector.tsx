@@ -1,7 +1,7 @@
 import { useEditor, limitDuration } from "@/lib/editor/store";
 import { isVideoTrack } from "@/lib/editor/tracks";
 import { fxKindOf } from "@/lib/editor/look-span";
-import { TEXT_COLORS, TEXT_FONTS, TEXT_LOOKS, TEXT_ANIMS, TEXT_SHADOWS, EFFECTS, ENTERS, LEAVES, MIDS, FILTERS, lookFields, lookPreviewStyle, sameLook, textFont, type Clip } from "@/lib/editor/types";
+import { TEXT_COLORS, TEXT_FONTS, TEXT_LOOKS, TEXT_ANIMS, TEXT_SHADOWS, EFFECTS, ENTERS, LEAVES, MIDS, FILTERS, GRADES, lookFields, lookPreviewStyle, sameLook, textFont, type Clip, type ClipFx } from "@/lib/editor/types";
 import { alignMark, centerAt } from "@/lib/editor/align";
 import { cn } from "@/lib/cn";
 import { INSPECTOR_TABS, loadInspectorTab, nextTab, saveInspectorTab, tabHasContent, type InspectorTab } from "@/lib/editor/inspector-tabs";
@@ -11,10 +11,77 @@ const FieldUnit = createContext("");
 
 export function Inspector() {
   const clip = useEditor((s) => s.clips.find((item) => item.id === s.selectedId) ?? null);
+  const fxId = useEditor((s) => (s.selectedFx && s.selectedFx.clipId === s.selectedId ? s.selectedFx.fxId : null));
+  const band = clip && fxId ? (clip.fx ?? []).find((b) => b.id === fxId) ?? null : null;
   return (
     <aside className="scroll h-full overflow-y-auto bg-surface p-3">
-      {clip ? <ClipInspector clip={clip} /> : <EmptyInspector />}
+      {clip && band ? <BandInspector clip={clip} band={band} /> : clip ? <ClipInspector clip={clip} /> : <EmptyInspector />}
     </aside>
+  );
+}
+
+const BAND_KIND = { filter: "Filtro", effect: "Efecto", grade: "Look" } as const;
+
+/** 0.0.16: ajustes de una capa de filtro/efecto dentro del clip. */
+function BandInspector({ clip, band }: { clip: Clip; band: ClipFx }) {
+  const patch = useEditor((s) => s.patchClipFx);
+  const remove = useEditor((s) => s.removeClipFx);
+  const options =
+    band.kind === "filter"
+      ? FILTERS.filter((f) => f.id !== "none").map((f) => ({ id: f.id as string, name: f.name }))
+      : band.kind === "effect"
+        ? EFFECTS.filter((f) => f.id !== "none").map((f) => ({ id: f.id as string, name: f.name }))
+        : GRADES.map((g) => ({ id: g.id, name: g.name }));
+  const num = (v: number) => v.toFixed(2);
+  return (
+    <div data-band-inspector="" className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="truncate text-sm font-semibold text-fg">
+          {BAND_KIND[band.kind]}: {band.name}
+        </h2>
+        <button type="button" className="h-9 rounded-md px-2 text-sm text-muted hover:bg-raised" onClick={() => useEditor.getState().select(clip.id)}>
+          Ver clip
+        </button>
+      </div>
+      <p className="text-xs text-muted">Dentro de “{clip.name}”. Arrastra los bordes de la capa en la línea de tiempo para achicarla, o el centro para moverla.</p>
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        {BAND_KIND[band.kind]}
+        <select
+          className="h-9 rounded-md border border-line bg-sunken px-2 text-sm text-fg"
+          value={band.ref}
+          onChange={(e) => {
+            const opt = options.find((o) => o.id === e.target.value);
+            if (opt) patch(clip.id, band.id, { ref: opt.id, name: opt.name });
+          }}
+        >
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        Intensidad · {Math.round(band.intensity * 100)}%
+        <input type="range" min={0} max={1} step={0.01} value={band.intensity} onChange={(e) => patch(clip.id, band.id, { intensity: Number(e.target.value) })} />
+      </label>
+      <div className="grid grid-cols-2 gap-2 text-xs text-muted">
+        <label className="flex flex-col gap-1">
+          Desde (s)
+          <input type="number" step={0.1} min={0} className="h-9 rounded-md border border-line bg-sunken px-2 text-sm text-fg" value={num(band.start)} onChange={(e) => patch(clip.id, band.id, { start: Math.min(Number(e.target.value) || 0, band.end - 0.2) })} />
+        </label>
+        <label className="flex flex-col gap-1">
+          Hasta (s)
+          <input type="number" step={0.1} min={0} className="h-9 rounded-md border border-line bg-sunken px-2 text-sm text-fg" value={num(band.end)} onChange={(e) => patch(clip.id, band.id, { end: Math.max(Number(e.target.value) || 0, band.start + 0.2) })} />
+        </label>
+      </div>
+      <button type="button" className="h-9 rounded-md border border-line text-sm text-fg hover:bg-raised" onClick={() => patch(clip.id, band.id, { start: 0, end: clip.duration })}>
+        Cubrir todo el clip
+      </button>
+      <button type="button" data-band-delete="" className="h-9 rounded-md bg-red-500/15 text-sm text-red-300 hover:bg-red-500/25" onClick={() => remove(clip.id, band.id)}>
+        Borrar {BAND_KIND[band.kind].toLowerCase()}
+      </button>
+    </div>
   );
 }
 

@@ -76,6 +76,19 @@ export type ToolId =
   | "reel"
   | "generate";
 
+/** 0.0.16: filtro/look/efecto dentro de un clip; `start`/`end` en segundos locales al clip. */
+export interface ClipFx {
+  id: string;
+  kind: "filter" | "effect" | "grade";
+  /** Id del filtro, efecto o look. */
+  ref: string;
+  name: string;
+  /** 0–1: cuánto se mezcla con la imagen original. */
+  intensity: number;
+  start: number;
+  end: number;
+}
+
 export interface Clip {
   id: string;
   type: ClipType;
@@ -130,6 +143,8 @@ export interface Clip {
   rotation?: number;
   font?: string;
   role?: "lyric" | "hook";
+  /** 0.0.16: capas de filtro/efecto dentro del clip. */
+  fx?: ClipFx[];
 }
 
 export interface Asset {

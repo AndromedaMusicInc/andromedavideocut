@@ -6,10 +6,11 @@ import { registerHitTest, subscribeDragPoint, setLaneIntent, readLaneIntent, pub
 import { limitDuration, pickJoin, useEditor } from "@/lib/editor/store";
 import { formatTime, findSlot, snapMove, snapTo, timelineSpan } from "@/lib/editor/time";
 import { fxLaneFor, isVisualLane, LANE_INSERT_EDGE, laneIntentFromBands, pruneTracks } from "@/lib/editor/tracks";
-import type { Clip } from "@/lib/editor/types";
+import type { Clip, ClipFx } from "@/lib/editor/types";
+import { bandsOf, dragBand, FX_ROW, trimBandsEnd, trimBandsStart } from "@/lib/editor/clip-fx";
 import { TRANSITIONS } from "@/lib/editor/types";
 import { cn } from "@/lib/cn";
-import { Blend, Bookmark, Copy, Eye, EyeOff, Magnet, Pause, Plus, Repeat, Scissors, Trash2, Undo2, Redo2, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react";
+import { Blend, Bookmark, Copy, Eye, EyeOff, Magnet, Pause, Plus, Repeat, Scissors, Sparkles, Trash2, Undo2, Redo2, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 export function Timeline() {
@@ -354,7 +355,8 @@ export function Timeline() {
                   key={band.id}
                   data-track={band.id}
                   data-hidden={hiddenTracks[band.id] ? "" : undefined}
-                  className={cn("relative h-10 border-b border-line", hiddenTracks[band.id] && "opacity-40", hot === band.id && "bg-accent/20 ring-1 ring-inset ring-accent")}
+                  style={{ height: 40 + rowBands(clips, band.id) * FX_ROW }}
+                  className={cn("relative border-b border-line", hiddenTracks[band.id] && "opacity-40", hot === band.id && "bg-accent/20 ring-1 ring-inset ring-accent")}
                   onPointerDown={(event) => {
                     if (event.target !== event.currentTarget) return;
                     pause();
@@ -717,7 +719,10 @@ function ClipView({ clip, pps, parked }: { clip: Clip; pps: number; parked?: boo
         {clip.name}
       </span>
       {clip.type === "audio" && clip.generator ? <Waveform id={clip.generator} /> : null}
-      {(clip.type === "audio" || clip.type === "video") && clip.assetId ? <AssetWave id={clip.assetId} /> : null}
+      {(clip.type === "audio" || clip.type === "video") && clip.assetId && !bandsOf(clip).length ? <AssetWave id={clip.assetId} /> : null}
+      {bandsOf(clip).map((band, i) => (
+        <FxBand key={band.id} clip={clip} band={band} row={i} pps={pps} />
+      ))}
       <span
         className="absolute inset-y-0 left-0 w-2 cursor-ew-resize"
         onPointerDown={(event) => beginDrag(event, clip, "start")}
@@ -728,6 +733,73 @@ function ClipView({ clip, pps, parked }: { clip: Clip; pps: number; parked?: boo
       />
     </div>
   );
+}
+
+/** Filas extra que necesita un canal: tantas como capas tenga su clip con más filtros/efectos dentro. */
+function rowBands(clips: Clip[], trackId: string) {
+  let n = 0;
+  for (const c of clips) if (c.trackId === trackId) n = Math.max(n, bandsOf(c).length);
+  return n;
+}
+
+const BAND_LABEL = { filter: "Filtro", effect: "Efecto", grade: "Look" } as const;
+
+/** 0.0.16: capa de filtro/efecto DENTRO del clip (sub-fila propia). Bordes = achicar/estirar, centro = mover. */
+function FxBand({ clip, band, row, pps }: { clip: Clip; band: ClipFx; row: number; pps: number }) {
+  const selected = useEditor((s) => s.selectedFx?.clipId === clip.id && s.selectedFx.fxId === band.id);
+  const width = Math.max(6, (band.end - band.start) * pps);
+  return (
+    <div
+      data-clip-fx={band.id}
+      data-fx-kind={band.kind}
+      title={`${BAND_LABEL[band.kind]}: ${band.name}`}
+      className={cn(
+        "absolute z-10 cursor-grab touch-none overflow-hidden rounded-[3px] border text-left",
+        "border-[#D4AF37]/70 bg-[#2a2108]/90 bg-[repeating-linear-gradient(135deg,rgba(212,175,55,0.16)_0_4px,transparent_4px_8px)]",
+        selected && "border-[#F3D77A] ring-1 ring-[#F3D77A]",
+      )}
+      style={{ top: 34 + row * FX_ROW, height: FX_ROW - 2, left: band.start * pps, width }}
+      onPointerDown={(event) => beginBandDrag(event, clip, band, "move")}
+      onContextMenu={(event) => event.stopPropagation()}
+    >
+      <span className="pointer-events-none flex h-full items-center gap-1 truncate px-2 text-[10px] font-medium leading-none text-[#F3D77A]">
+        <Sparkles className="size-2.5 shrink-0" />
+        <span className="truncate">{BAND_LABEL[band.kind]}: {band.name}</span>
+      </span>
+      <span className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-[#D4AF37]/50" onPointerDown={(event) => beginBandDrag(event, clip, band, "start")} />
+      <span className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-[#D4AF37]/50" onPointerDown={(event) => beginBandDrag(event, clip, band, "end")} />
+    </div>
+  );
+}
+
+function beginBandDrag(event: ReactPointerEvent, clip: Clip, band: ClipFx, mode: "move" | "start" | "end") {
+  if (event.button === 2) return;
+  event.stopPropagation();
+  event.preventDefault();
+  const state = useEditor.getState();
+  state.selectFx(clip.id, band.id);
+  const before = state.snapshot();
+  const originX = event.clientX;
+  const pps = state.pps;
+  let moved = false;
+  const move = (ev: PointerEvent) => {
+    const dx = (ev.clientX - originX) / pps;
+    if (Math.abs(ev.clientX - originX) > 2) moved = true;
+    const next = dragBand(band, mode, dx, clip.duration);
+    useEditor.getState().patchClipFx(clip.id, band.id, { start: next.start, end: next.end }, false);
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    if (moved) useEditor.getState().pushHistory(before);
+    else {
+      // Clic: el cabezal entra en la capa para que el visor muestre el filtro.
+      const local = playback.time - clip.start;
+      if (local < band.start || local >= band.end) seek(clip.start + band.start);
+    }
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
 }
 
 /** Arrastra toda la selección múltiple en el tiempo (misma pista de cada clip). */
@@ -804,7 +876,7 @@ function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" 
       let duration = orig.duration + dx;
       if (now.snap) duration = snapTo(orig.start + duration, points, pps) - orig.start;
       duration = limitDuration(orig, duration, now.assets);
-      now.patchClip(clip.id, { duration }, false);
+      now.patchClip(clip.id, orig.fx?.length ? { duration, fx: trimBandsEnd(orig.fx, duration) } : { duration }, false);
       return;
     }
     let start = Math.max(0, Math.min(orig.start + orig.duration - 0.2, orig.start + dx));
@@ -812,7 +884,7 @@ function beginDrag(event: ReactPointerEvent, clip: Clip, mode: "move" | "start" 
     const delta = start - orig.start;
     const duration = Math.max(0.2, orig.duration - delta);
     const inPoint = Math.max(0, orig.inPoint + delta * orig.speed);
-    now.patchClip(clip.id, { start, duration, inPoint }, false);
+    now.patchClip(clip.id, orig.fx?.length ? { start, duration, inPoint, fx: trimBandsStart(orig.fx, delta, duration) } : { start, duration, inPoint }, false);
   };
   const up = (ev: PointerEvent) => {
     window.removeEventListener("pointermove", move);

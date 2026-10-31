@@ -9,6 +9,23 @@ versionado [SemVer](https://semver.org/lang/es/).
 > por actualización automática (no se baja de versión): debe desinstalarla e instalar la 0.0.2 a mano. Sus proyectos se
 > conservan (carpeta de datos de la app).
 
+## [0.0.16] — 2026-10-31 · Beta
+
+### Cambiado
+- **Los filtros, looks y efectos caen DENTRO del clip.** Al soltarlos sobre un clip (o al hacer clic con un clip
+  seleccionado o bajo el cabezal) el clip crece hacia abajo y gana una sub-fila sombreada en dorado con el nombre
+  ("Filtro: Gold 200", "Efecto: Velocity"…). Cada filtro nuevo se apila en su propia sub-fila.
+- La capa se **achica o estira** arrastrando sus bordes y se **mueve** arrastrando el centro, siempre dentro del clip.
+- El visor y la exportación aplican cada capa **solo a ese clip** y **solo en su tramo**.
+- Al seleccionar una capa, Ajustes muestra: cuál filtro/efecto, **intensidad**, desde/hasta, "Cubrir todo el clip" y
+  **Borrar**. Supr también borra la capa seleccionada (no el clip).
+- Las capas siguen al clip al moverlo, recortarlo (quedan sobre el mismo contenido) y dividirlo (cada pedazo se queda
+  con su parte). Deshacer/rehacer funciona con todo.
+
+### Se mantiene
+- Soltar en la línea **"Canal nuevo"** sigue creando una barra en una pista de efectos aparte (opción secundaria).
+- Los proyectos viejos con barras fx abren y se ven igual.
+
 ## [0.0.15] — 2026-10-31 · Beta
 
 ### Corregido

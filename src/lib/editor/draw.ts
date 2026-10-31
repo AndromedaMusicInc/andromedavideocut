@@ -5,7 +5,9 @@ import { drawGenerator, drawSticker } from "@/lib/editor/generators";
 import { clipMotion, motionWindows } from "@/lib/editor/motion";
 import { drawCover, pool } from "@/lib/editor/pool";
 import { useEditor } from "@/lib/editor/store";
-import type { Clip, EffectId } from "@/lib/editor/types";
+import type { Clip, ClipFx, EffectId } from "@/lib/editor/types";
+import { GRADES, makeClip } from "@/lib/editor/types";
+import { activeBands } from "@/lib/editor/clip-fx";
 import { paintOrder } from "@/lib/editor/tracks";
 import { FILTERS, textFont } from "@/lib/editor/types";
 
@@ -1025,13 +1027,83 @@ function stampFx(ctx: CanvasRenderingContext2D, w: number, h: number, time: numb
         time < clip.start + clip.duration,
     )
     .sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));
-  for (const clip of active) {
-    if (clip.filter && clip.filter !== "none") applyAdjust(ctx, clip, w, h);
-    else if ((clip.brightness ?? 1) !== 1 || (clip.contrast ?? 1) !== 1 || Math.abs((clip.saturate ?? 1) - 1) > 0.015 || Math.abs(clip.temperature ?? 0) > 0.02 || Math.abs(clip.tint ?? 0) > 0.02 || (clip.wash ?? 0) > 0.01 || (clip.vignette ?? 0) > 0.01) {
-      applyAdjust(ctx, clip, w, h);
-    }
-    if (clip.effect && clip.effect !== "none") stampEffect(ctx, clip.effect, w, h, time - clip.start);
+  for (const clip of active) applyFxClip(ctx, clip, w, h, time - clip.start);
+}
+
+function applyFxClip(ctx: CanvasRenderingContext2D, clip: Clip, w: number, h: number, local: number) {
+  if (clip.filter && clip.filter !== "none") applyAdjust(ctx, clip, w, h);
+  else if ((clip.brightness ?? 1) !== 1 || (clip.contrast ?? 1) !== 1 || Math.abs((clip.saturate ?? 1) - 1) > 0.015 || Math.abs(clip.temperature ?? 0) > 0.02 || Math.abs(clip.tint ?? 0) > 0.02 || (clip.wash ?? 0) > 0.01 || (clip.vignette ?? 0) > 0.01) {
+    applyAdjust(ctx, clip, w, h);
   }
+  if (clip.effect && clip.effect !== "none") stampEffect(ctx, clip.effect, w, h, local);
+}
+
+/** Convierte una banda del clip en un "clip fx" neutro para reutilizar el mismo pintado que las barras. */
+function bandAsFx(band: ClipFx): Clip {
+  const base = makeClip({ id: band.id, type: "fx", trackId: "", name: band.name, start: 0, duration: 1, effect: "none" });
+  if (band.kind === "grade") Object.assign(base, GRADES.find((g) => g.id === band.ref)?.patch ?? {});
+  else if (band.kind === "filter") base.filter = band.ref as Clip["filter"];
+  else base.effect = band.ref as EffectId;
+  return base;
+}
+
+let bandBuf: HTMLCanvasElement | null = null;
+let bandMix: HTMLCanvasElement | null = null;
+function canvasOf(c: HTMLCanvasElement | null, w: number, h: number) {
+  if (!c) c = document.createElement("canvas");
+  if (c.width !== w || c.height !== h) {
+    c.width = w;
+    c.height = h;
+  }
+  return c;
+}
+
+/** 0.0.16: pinta el clip; si tiene bandas activas, las aplica solo a ese clip (en un búfer aparte) con su intensidad. */
+function paintBanded(ctx: CanvasRenderingContext2D, clip: Clip, time: number, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
+  const bands = activeBands(clip, time);
+  if (!bands.length) {
+    draw(ctx);
+    return;
+  }
+  bandBuf = canvasOf(bandBuf, w, h);
+  bandMix = canvasOf(bandMix, w, h);
+  const b = bandBuf.getContext("2d");
+  const m = bandMix.getContext("2d");
+  if (!b || !m) {
+    draw(ctx);
+    return;
+  }
+  b.setTransform(1, 0, 0, 1, 0, 0);
+  b.clearRect(0, 0, w, h);
+  b.globalAlpha = 1;
+  b.filter = "none";
+  draw(b);
+  for (const band of bands) {
+    const k = Math.max(0, Math.min(1, band.intensity ?? 1));
+    if (k <= 0.001) continue;
+    m.setTransform(1, 0, 0, 1, 0, 0);
+    m.globalAlpha = 1;
+    m.clearRect(0, 0, w, h);
+    m.drawImage(bandBuf, 0, 0);
+    applyFxClip(b, bandAsFx(band), w, h, time - clip.start - band.start);
+    if (k < 0.999) {
+      // Mezcla: original + (filtrado × intensidad), recortado a la silueta del clip.
+      m.globalAlpha = k;
+      m.globalCompositeOperation = "source-atop";
+      m.drawImage(bandBuf, 0, 0);
+      m.globalCompositeOperation = "source-over";
+      m.globalAlpha = 1;
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.clearRect(0, 0, w, h);
+      b.drawImage(bandMix, 0, 0);
+    }
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.filter = "none";
+  ctx.drawImage(bandBuf, 0, 0);
+  ctx.restore();
 }
 
 function applyAdjust(ctx: CanvasRenderingContext2D, clip: Clip, w: number, h: number) {
@@ -1082,11 +1154,11 @@ function paintTrack(
       const prev = list[i - 1];
       if (prev && clip.start - (prev.start + prev.duration) < 0.08) {
         const prevTime = Math.min(time, prev.start + prev.duration - 0.001);
-        paint(ctx, prev, prevTime, 1, w, h);
+        paintBanded(ctx, prev, prevTime, w, h, (c) => paint(c, prev, prevTime, 1, w, h));
       }
-      paintIncoming(ctx, clip, time, (time - clip.start) / td, w, h);
+      paintBanded(ctx, clip, time, w, h, (c) => paintIncoming(c, clip, time, (time - clip.start) / td, w, h));
     } else {
-      paint(ctx, clip, time, 1, w, h);
+      paintBanded(ctx, clip, time, w, h, (c) => paint(c, clip, time, 1, w, h));
     }
   }
 }
